@@ -399,27 +399,179 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        NavigationView {
-            VStack {
+        NavigationStack {
+            VStack(spacing: 20) {
                 Image(systemName: "swift")
-                    .imageScale(.large)
-                    .foregroundColor(.accentColor)
+                    .font(.system(size: 80))
+                    .foregroundColor(.blue)
+                
                 Text("Welcome to $PROJECT_NAME!")
-                    .font(.title2)
-                    .padding()
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .multilineTextAlignment(.center)
+                
+                Text("Your iOS app is ready to build amazing things.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                Button("Get Started") {
+                    print("Hello from $PROJECT_NAME!")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
+            .padding()
             .navigationTitle("$PROJECT_NAME")
         }
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+#Preview {
+    ContentView()
 }
 EOF
     log_success "Created ContentView.swift"
+  fi
+
+  # Create a sample ViewModel
+  local main_viewmodel_file="$PROJECT_NAME/ViewModels/MainViewModel.swift"
+  if [[ ! -f "$main_viewmodel_file" || "$FORCE_OVERWRITE" == true ]]; then
+    cat > "$main_viewmodel_file" <<EOF
+import SwiftUI
+import Combine
+
+@MainActor
+class MainViewModel: ObservableObject {
+    @Published var message = "Hello from $PROJECT_NAME!"
+    @Published var isLoading = false
+    
+    func refreshData() {
+        isLoading = true
+        
+        // Simulate async work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.message = "Data refreshed at \(Date().formatted(date: .omitted, time: .shortened))"
+            self.isLoading = false
+        }
+    }
+}
+EOF
+    log_success "Created MainViewModel.swift"
+  fi
+
+  # Create basic unit test
+  local content_view_test_file="${PROJECT_NAME}Tests/Views/ContentViewTests.swift"
+  if [[ ! -f "$content_view_test_file" || "$FORCE_OVERWRITE" == true ]]; then
+    mkdir -p "${PROJECT_NAME}Tests/Views"
+    cat > "$content_view_test_file" <<EOF
+import XCTest
+import SwiftUI
+@testable import $PROJECT_NAME
+
+final class ContentViewTests: XCTestCase {
+    
+    func testContentViewExists() throws {
+        // Test that ContentView can be instantiated
+        let contentView = ContentView()
+        XCTAssertNotNil(contentView)
+    }
+}
+EOF
+    log_success "Created ContentViewTests.swift"
+  fi
+
+  # Create basic ViewModel test
+  local viewmodel_test_file="${PROJECT_NAME}Tests/ViewModels/MainViewModelTests.swift"
+  if [[ ! -f "$viewmodel_test_file" || "$FORCE_OVERWRITE" == true ]]; then
+    mkdir -p "${PROJECT_NAME}Tests/ViewModels"
+    cat > "$viewmodel_test_file" <<EOF
+import XCTest
+import Combine
+@testable import $PROJECT_NAME
+
+@MainActor
+final class MainViewModelTests: XCTestCase {
+    var viewModel: MainViewModel!
+    var cancellables: Set<AnyCancellable>!
+    
+    override func setUp() {
+        super.setUp()
+        viewModel = MainViewModel()
+        cancellables = Set<AnyCancellable>()
+    }
+    
+    override func tearDown() {
+        viewModel = nil
+        cancellables = nil
+        super.tearDown()
+    }
+    
+    func testInitialState() throws {
+        XCTAssertEqual(viewModel.message, "Hello from $PROJECT_NAME!")
+        XCTAssertFalse(viewModel.isLoading)
+    }
+    
+    func testRefreshData() throws {
+        let expectation = XCTestExpectation(description: "Data refresh completes")
+        
+        viewModel.$message
+            .dropFirst() // Skip initial value
+            .sink { message in
+                XCTAssertTrue(message.contains("Data refreshed"))
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
+        
+        viewModel.refreshData()
+        XCTAssertTrue(viewModel.isLoading)
+        
+        wait(for: [expectation], timeout: 2.0)
+        XCTAssertFalse(viewModel.isLoading)
+    }
+}
+EOF
+    log_success "Created MainViewModelTests.swift"
+  fi
+
+  # Create basic UI test
+  local ui_test_file="${PROJECT_NAME}UITests/${PROJECT_NAME}UITests.swift"
+  if [[ ! -f "$ui_test_file" || "$FORCE_OVERWRITE" == true ]]; then
+    cat > "$ui_test_file" <<EOF
+import XCTest
+
+final class ${PROJECT_NAME}UITests: XCTestCase {
+    var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launch()
+    }
+
+    func testAppLaunches() throws {
+        // Test that the app launches and shows the main content
+        let navigationTitle = app.navigationBars["$PROJECT_NAME"]
+        XCTAssertTrue(navigationTitle.exists)
+        
+        let welcomeText = app.staticTexts["Welcome to $PROJECT_NAME!"]
+        XCTAssertTrue(welcomeText.exists)
+        
+        let getStartedButton = app.buttons["Get Started"]
+        XCTAssertTrue(getStartedButton.exists)
+    }
+    
+    func testGetStartedButton() throws {
+        let getStartedButton = app.buttons["Get Started"]
+        XCTAssertTrue(getStartedButton.exists)
+        
+        getStartedButton.tap()
+        // Add assertions for what should happen when button is tapped
+    }
+}
+EOF
+    log_success "Created ${PROJECT_NAME}UITests.swift"
   fi
 
   # Create Info.plist
