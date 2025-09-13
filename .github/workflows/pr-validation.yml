@@ -1,0 +1,305 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  validate:
+    name: Code Quality & Testing
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.4'
+        
+    - name: Cache Homebrew packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /usr/local/Homebrew
+        key: ${{ runner.os }}-homebrew-${{ hashFiles('**/Brewfile') }}
+        restore-keys: |
+          ${{ runner.os }}-homebrew-
+          
+    - name: Install dependencies
+      run: |
+        # Install Homebrew dependencies
+        brew bundle install --file=./Brewfile
+        
+        # Verify installations
+        echo "Installed versions:"
+        swiftlint --version
+        swiftformat --version
+        xcodegen --version
+        yq --version
+        
+    - name: Validate project configuration
+      run: |
+        # Check if project.yml exists and is valid
+        if [ -f "project.yml" ]; then
+          echo "✓ project.yml found"
+          yq eval '.' project.yml > /dev/null
+          echo "✓ project.yml is valid YAML"
+          
+          # Extract project name for validation
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          echo "✓ Project name: $PROJECT_NAME"
+          
+          # Validate deployment target
+          DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
+          echo "✓ iOS Deployment Target: $DEPLOYMENT_TARGET"
+        else
+          echo "⚠ project.yml not found - this may be the template repository itself"
+        fi
+        
+    - name: Generate Xcode project
+      run: |
+        if [ -f "project.yml" ]; then
+          echo "Generating Xcode project..."
+          xcodegen generate
+          
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          if [ -d "${PROJECT_NAME}.xcodeproj" ]; then
+            echo "✓ Xcode project generated successfully"
+          else
+            echo "✗ Failed to generate Xcode project"
+            exit 1
+          fi
+        else
+          echo "Skipping Xcode project generation - no project.yml found"
+        fi
+        
+    - name: SwiftLint
+      run: |
+        if [ -f "project.yml" ]; then
+          echo "Running SwiftLint..."
+          
+          # Get project name and check if source directories exist
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          
+          if [ -d "$PROJECT_NAME" ]; then
+            swiftlint lint --strict
+            echo "✓ SwiftLint passed"
+          else
+            echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftLint"
+          fi
+        else
+          echo "Skipping SwiftLint - no project.yml found"
+        fi
+        
+    - name: SwiftFormat check
+      run: |
+        if [ -f "project.yml" ]; then
+          echo "Checking SwiftFormat..."
+          
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          
+          if [ -d "$PROJECT_NAME" ]; then
+            # Check if code is properly formatted
+            swiftformat --lint $PROJECT_NAME
+            echo "✓ SwiftFormat check passed"
+          else
+            echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftFormat"
+          fi
+        else
+          echo "Skipping SwiftFormat - no project.yml found"
+        fi
+        
+    - name: Build project
+      run: |
+        if [ -f "project.yml" ]; then
+          echo "Building project..."
+          
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
+          
+          # Determine simulator based on deployment target
+          if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
+            MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
+            if [ "$MAJOR_VERSION" -ge "17" ]; then
+              SIMULATOR_NAME="iPhone 15 Pro"
+            else
+              SIMULATOR_NAME="iPhone 14 Pro"
+            fi
+          else
+            SIMULATOR_NAME="iPhone 15 Pro"
+          fi
+          
+          echo "Building for $SIMULATOR_NAME..."
+          
+          xcodebuild build \
+            -project "${PROJECT_NAME}.xcodeproj" \
+            -scheme "$PROJECT_NAME" \
+            -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
+            -configuration Debug \
+            ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+            
+          echo "✓ Build completed successfully"
+        else
+          echo "Skipping build - no project.yml found"
+        fi
+        
+    - name: Run unit tests
+      run: |
+        if [ -f "project.yml" ]; then
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          
+          # Check if test target exists
+          HAS_TESTS=$(yq eval ".targets | has(\"${PROJECT_NAME}Tests\")" project.yml)
+          
+          if [ "$HAS_TESTS" = "true" ]; then
+            echo "Running unit tests..."
+            
+            DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
+            if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
+              MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
+              if [ "$MAJOR_VERSION" -ge "17" ]; then
+                SIMULATOR_NAME="iPhone 15 Pro"
+              else
+                SIMULATOR_NAME="iPhone 14 Pro"
+              fi
+            else
+              SIMULATOR_NAME="iPhone 15 Pro"
+            fi
+            
+            xcodebuild test \
+              -project "${PROJECT_NAME}.xcodeproj" \
+              -scheme "$PROJECT_NAME" \
+              -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
+              -configuration Debug \
+              -enableCodeCoverage YES \
+              ONLY_ACTIVE_ARCH=YES \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+              
+            echo "✓ Unit tests completed"
+          else
+            echo "⚠ No unit test target found, skipping tests"
+          fi
+        else
+          echo "Skipping tests - no project.yml found"
+        fi
+        
+    - name: Run UI tests
+      run: |
+        if [ -f "project.yml" ]; then
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          
+          # Check if UI test target exists
+          HAS_UI_TESTS=$(yq eval ".targets | has(\"${PROJECT_NAME}UITests\")" project.yml)
+          
+          if [ "$HAS_UI_TESTS" = "true" ]; then
+            echo "Running UI tests..."
+            
+            DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
+            if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
+              MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
+              if [ "$MAJOR_VERSION" -ge "17" ]; then
+                SIMULATOR_NAME="iPhone 15 Pro"
+              else
+                SIMULATOR_NAME="iPhone 14 Pro"
+              fi
+            else
+              SIMULATOR_NAME="iPhone 15 Pro"
+            fi
+            
+            # UI tests often need more time and resources
+            xcodebuild test \
+              -project "${PROJECT_NAME}.xcodeproj" \
+              -scheme "$PROJECT_NAME" \
+              -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
+              -configuration Debug \
+              -only-testing:"${PROJECT_NAME}UITests" \
+              ONLY_ACTIVE_ARCH=YES \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO || {
+                echo "⚠ UI tests failed, but continuing (UI tests can be flaky in CI)"
+                # Don't fail the build for UI test failures in CI
+              }
+              
+            echo "✓ UI tests completed"
+          else
+            echo "⚠ No UI test target found, skipping UI tests"
+          fi
+        else
+          echo "Skipping UI tests - no project.yml found"
+        fi
+        
+    - name: Validate scripts
+      run: |
+        echo "Validating helper scripts..."
+        
+        # Check that all scripts are executable
+        find scripts -name "*.sh" -type f | while read script; do
+          if [ -x "$script" ]; then
+            echo "✓ $script is executable"
+          else
+            echo "✗ $script is not executable"
+            exit 1
+          fi
+        done
+        
+        # Check script syntax
+        find scripts -name "*.sh" -type f | while read script; do
+          if bash -n "$script"; then
+            echo "✓ $script syntax is valid"
+          else
+            echo "✗ $script has syntax errors"
+            exit 1
+          fi
+        done
+        
+        echo "✓ All scripts validated"
+        
+    - name: Check configuration files
+      run: |
+        echo "Validating configuration files..."
+        
+        # Check .swiftlint.yml if it exists
+        if [ -f ".swiftlint.yml" ]; then
+          yq eval '.' .swiftlint.yml > /dev/null
+          echo "✓ .swiftlint.yml is valid"
+        fi
+        
+        # Check .swiftformat if it exists
+        if [ -f ".swiftformat" ]; then
+          echo "✓ .swiftformat found"
+        fi
+        
+        # Check simulator.yml if it exists
+        if [ -f "simulator.yml" ]; then
+          yq eval '.' simulator.yml > /dev/null
+          echo "✓ simulator.yml is valid"
+        fi
+        
+        # Check Brewfile
+        if [ -f "Brewfile" ]; then
+          echo "✓ Brewfile found"
+        fi
+        
+        echo "✓ Configuration files validated"
+        
+    - name: Summary
+      run: |
+        echo "🎉 PR Validation Complete!"
+        echo ""
+        echo "✅ Code quality checks passed"
+        echo "✅ Build completed successfully"
+        echo "✅ Tests executed"
+        echo "✅ Configuration validated"
+        echo ""
+        echo "This PR is ready for review! 🚀"

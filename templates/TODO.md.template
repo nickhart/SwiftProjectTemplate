@@ -1,0 +1,50 @@
+# {{PROJECT_NAME}} - TODO
+
+## Current Sprint
+
+### High Priority
+- [ ] Complete initial project setup and basic architecture
+- [ ] Implement core {{ARCHITECTURE}} structure
+- [ ] Set up basic navigation flow
+
+### Medium Priority
+- [ ] Add comprehensive unit test coverage
+- [ ] Implement UI tests for main user flows
+- [ ] Set up CI/CD pipeline
+
+### Low Priority
+- [ ] Add accessibility support
+- [ ] Optimize performance for large datasets
+- [ ] Add internationalization support
+
+## Backlog
+
+### Features
+- [ ] Feature 1: [Description]
+- [ ] Feature 2: [Description]
+- [ ] Feature 3: [Description]
+
+### Technical Debt
+- [ ] Refactor legacy code patterns
+- [ ] Update deprecated APIs
+- [ ] Improve error handling consistency
+
+### Documentation
+- [ ] Add inline code documentation
+- [ ] Create architecture decision records (ADRs)
+- [ ] Update README with advanced usage examples
+
+## Completed ✅
+
+### Setup
+- [x] Project template created from SwiftProjectTemplate
+- [x] Development environment configured
+- [x] Basic project structure established
+
+---
+
+## Notes
+
+- Use `./scripts/preflight.sh` before pushing changes
+- Keep this TODO updated as priorities change
+- Create GitHub issues for items that need detailed tracking

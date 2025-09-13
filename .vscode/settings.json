@@ -1,0 +1,55 @@
+{
+  "[markdown]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.markdownlint": "explicit"
+    }
+  },
+  "[yaml]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[swift]": {
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false
+  },
+  "files.associations": {
+    "*.yml": "yaml",
+    "*.yaml": "yaml",
+    "*.xcodeproj": "json",
+    "*.plist": "xml",
+    "Brewfile": "plaintext",
+    ".swiftformat": "ini",
+    ".swiftlint.yml": "yaml"
+  },
+  "files.exclude": {
+    "**/.build": true,
+    "**/DerivedData": true,
+    "**/.DS_Store": true,
+    "**/build": true,
+    "**/*.xcworkspace": false
+  },
+  "search.exclude": {
+    "**/.build": true,
+    "**/DerivedData": true,
+    "**/build": true
+  },
+  "cSpell.words": [
+    "swiftc",
+    "swiftformat",
+    "swiftlint",
+    "xcbeautify",
+    "xcodegen",
+    "xcodeproj",
+    "xcpretty",
+    "xcworkspace"
+  ],
+  "editor.rulers": [80, 120],
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 120
+}

@@ -1,0 +1,71 @@
+# SwiftFormat configuration for {{PROJECT_NAME}}
+# For more information: https://github.com/nicklockwood/SwiftFormat
+
+# Version
+--swiftversion 5.10
+
+# Formatting rules
+--rules                          all
+--disable                        wrapMultilineStatementBraces
+--disable                        blankLinesAroundMark
+
+# Options
+--allman                         false
+--binarygrouping                 4,8
+--commas                         always
+--comments                       indent
+--decimalgrouping                3,6
+--elseposition                   same-line
+--empty                          void
+--exponentcase                   lowercase
+--exponentgrouping               disabled
+--fractiongrouping               disabled
+--fragment                       false
+--funcattributes                 prev-line
+--groupedImports                 alphabetized
+--guardelse                      same-line
+--hexgrouping                    4,8
+--hexliteralcase                 uppercase
+--ifdef                          indent
+--importgrouping                 alphabetized
+--indent                         2
+--indentcase                     false
+--linebreaks                     lf
+--marktypes                      always
+--maxwidth                       120
+--modifierorder                  override,public,open,internal,fileprivate,private,static,class,final,required,convenience,lazy
+--nevertrailing                  
+--nospaceoperators               ...,..<
+--nowrapoperators                
+--octalgrouping                  4,8
+--operatorfunc                   spaced
+--patternlet                     hoist
+--ranges                         spaced
+--self                           init-only
+--selfrequired                   
+--semicolons                     inline
+--shortoptionals                 always
+--smarttabs                      enabled
+--stripunusedargs                closure-only
+--tabwidth                       unspecified
+--trailingclosures               
+--trimwhitespace                 always
+--typeattributes                 prev-line
+--typemark                       
+--varattributes                  same-line
+--voidtype                       void
+--wraparguments                  preserve
+--wrapcollections                preserve
+--wrapconditions                 preserve
+--wrapparameters                 preserve
+--wrapreturntype                 preserve
+--wraptypealiases                preserve
+--xcodeindentation               disabled
+--yodaswap                       always
+
+# File options
+--exclude                        Pods
+--exclude                        .build
+--exclude                        DerivedData
+--exclude                        build
+--exclude                        **/.git

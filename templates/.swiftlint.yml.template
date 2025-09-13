@@ -1,0 +1,126 @@
+disabled_rules:
+  - trailing_whitespace
+  - unused_optional_binding
+
+opt_in_rules:
+  - array_init
+  - attributes
+  - closure_end_indentation
+  - closure_spacing
+  - collection_alignment
+  - contains_over_first_not_nil
+  - empty_count
+  - empty_string
+  - enum_case_associated_values_count
+  - fatal_error_message
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - last_where
+  - legacy_random
+  - literal_expression_end_indentation
+  - multiline_arguments
+  - multiline_function_chains
+  - multiline_literal_brackets
+  - multiline_parameters
+  - multiline_parameters_brackets
+  - operator_usage_whitespace
+  - overridden_super_call
+  - pattern_matching_keywords
+  - prefer_self_type_over_type_of_self
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - strict_fileprivate
+  - switch_case_alignment
+  - toggle_bool
+  - trailing_closure
+  - unneeded_parentheses_in_closure_argument
+  - unused_import
+  - vertical_parameter_alignment_on_call
+  - yoda_condition
+
+included:
+  - {{PROJECT_NAME}}
+  - {{PROJECT_NAME}}Tests
+  - {{PROJECT_NAME}}UITests
+
+excluded:
+  - Pods
+  - .build
+  - DerivedData
+  - build
+
+analyzer_rules:
+  - unused_import
+
+line_length:
+  warning: 120
+  error: 150
+  ignores_function_declarations: true
+  ignores_comments: true
+  ignores_urls: true
+
+function_body_length:
+  warning: 60
+  error: 100
+
+function_parameter_count:
+  warning: 6
+  error: 8
+
+type_body_length:
+  warning: 300
+  error: 400
+
+file_length:
+  warning: 500
+  error: 800
+
+cyclomatic_complexity:
+  warning: 10
+  error: 15
+
+nesting:
+  type_level:
+    warning: 3
+  statement_level:
+    warning: 5
+
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  max_length:
+    warning: 40
+    error: 60
+  excluded:
+    - id
+    - db
+    - i
+    - j
+    - k
+    - x
+    - y
+    - z
+
+type_name:
+  min_length:
+    warning: 3
+    error: 2
+  max_length:
+    warning: 40
+    error: 60
+
+large_tuple:
+  warning: 3
+  error: 4
+
+# Custom rules for better code quality
+custom_rules:
+  no_objcMembers:
+    name: "@objcMembers"
+    regex: "@objcMembers"
+    message: "Prefer @objc on individual members over @objcMembers"
+    severity: warning
+
+reporter: "xcode"
