@@ -94,9 +94,13 @@ replace_template_vars() {
   for var_assignment in "$@"; do
     local var_name="${var_assignment%=*}"
     local var_value="${var_assignment#*=}"
-    # Escape special characters for sed
-    var_value=$(echo "$var_value" | sed 's/[[\.*^$()+?{|]/\\&/g')
-    sed -i.bak "s/{{${var_name}}}/${var_value}/g" "$temp_file"
+    
+    # Use a different delimiter for sed to avoid issues with forward slashes
+    # Also escape any ampersands and backslashes in the replacement text
+    var_value=$(echo "$var_value" | sed 's/\\/\\\\/g; s/&/\\&/g')
+    
+    # Use | as delimiter instead of / to avoid URL conflicts
+    sed -i.bak "s|{{${var_name}}}|${var_value}|g" "$temp_file"
   done
   
   mv "$temp_file" "$output_file"
