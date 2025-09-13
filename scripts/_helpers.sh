@@ -80,6 +80,19 @@ validate_swift_version() {
   return 0
 }
 
+# Validate bundle ID root format (e.g., com.yourname, com.company.team)
+validate_bundle_id_root() {
+  local bundle_id="$1"
+  if [[ -z "$bundle_id" ]]; then
+    return 1
+  fi
+  # Check if it follows reverse domain notation (at least one dot, alphanumeric + dots + hyphens)
+  if [[ ! "$bundle_id" =~ ^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$ ]]; then
+    return 1
+  fi
+  return 0
+}
+
 # Replace template variables in a file
 # Usage: replace_template_vars "input_file" "output_file" "VAR1=value1" "VAR2=value2"
 replace_template_vars() {

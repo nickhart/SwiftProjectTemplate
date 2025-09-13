@@ -1,6 +1,6 @@
 name: {{PROJECT_NAME}}
 options:
-  bundleIdPrefix: com.yourcompany
+  bundleIdPrefix: {{BUNDLE_ID_ROOT}}
   developmentLanguage: en
   deploymentTarget:
     iOS: "{{DEPLOYMENT_TARGET}}"
@@ -45,7 +45,7 @@ targets:
       path: {{PROJECT_NAME}}/Info.plist
       properties:
         CFBundleDisplayName: {{PROJECT_NAME}}
-        CFBundleIdentifier: com.yourcompany.{{PROJECT_NAME_LOWER}}
+        CFBundleIdentifier: {{BUNDLE_IDENTIFIER}}
         CFBundleVersion: "1"
         CFBundleShortVersionString: "1.0"
         UILaunchStoryboardName: LaunchScreen
