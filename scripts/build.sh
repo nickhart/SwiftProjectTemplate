@@ -110,20 +110,80 @@ determine_destination() {
   if $BUILD_FOR_DEVICE; then
     echo "generic/platform=iOS"
   else
-    # Choose simulator based on deployment target
-    local simulator_name="iPhone 15 Pro"
+    local simulator_name=""
+    local simulator_arch=""
     
-    if [[ "$DEPLOYMENT_TARGET" != "null" && -n "$DEPLOYMENT_TARGET" ]]; then
-      local major_version
-      major_version=$(echo "$DEPLOYMENT_TARGET" | cut -d'.' -f1)
-      
-      if [[ "$major_version" -lt "17" ]]; then
-        simulator_name="iPhone 14 Pro"
+    # Try to get simulator from simulator.yml first
+    if [[ -f "simulator.yml" ]] && command_exists yq; then
+      simulator_name=$(yq '.simulators.tests.device' simulator.yml 2>/dev/null || echo "")
+      simulator_arch=$(yq '.simulators.tests.arch' simulator.yml 2>/dev/null || echo "")
+      if [[ "$simulator_name" == "null" || -z "$simulator_name" ]]; then
+        simulator_name=""
+      fi
+      if [[ "$simulator_arch" == "null" || -z "$simulator_arch" ]]; then
+        simulator_arch=""
       fi
     fi
     
-    echo "platform=iOS Simulator,name=$simulator_name"
+    # Fallback to hardcoded defaults based on deployment target
+    if [[ -z "$simulator_name" ]]; then
+      simulator_name="iPhone 15 Pro"
+      
+      if [[ "$DEPLOYMENT_TARGET" != "null" && -n "$DEPLOYMENT_TARGET" ]]; then
+        local major_version
+        major_version=$(echo "$DEPLOYMENT_TARGET" | cut -d'.' -f1)
+        
+        if [[ "$major_version" -lt "17" ]]; then
+          simulator_name="iPhone 14 Pro"
+        fi
+      fi
+    fi
+    
+    # Default architecture if not specified
+    if [[ -z "$simulator_arch" ]]; then
+      # Auto-detect Mac architecture
+      if [[ "$(uname -m)" == "arm64" ]]; then
+        simulator_arch="arm64"
+      else
+        simulator_arch="x86_64"
+      fi
+    fi
+    
+    # Validate simulator exists and suggest alternatives if not
+    if ! validate_simulator_exists "$simulator_name"; then
+      log_warning "Simulator '$simulator_name' not found"
+      
+      # Try to find any available iPhone simulator
+      local available_sim
+      available_sim=$(find_available_iphone_simulator)
+      
+      if [[ -n "$available_sim" ]]; then
+        log_info "Using available simulator: $available_sim"
+        simulator_name="$available_sim"
+      else
+        log_error "No iPhone simulators found. Please install iOS Simulator or run:"
+        log_info "  ./scripts/simulator.sh list"
+        log_info "  ./scripts/simulator.sh config-tests \"<device-name>\""
+        exit 1
+      fi
+    fi
+    
+    echo "platform=iOS Simulator,arch=$simulator_arch,name=$simulator_name"
   fi
+}
+
+validate_simulator_exists() {
+  local sim_name="$1"
+  xcrun simctl list devices available 2>/dev/null | grep -q "$sim_name"
+}
+
+find_available_iphone_simulator() {
+  # Find first available iPhone simulator
+  xcrun simctl list devices available 2>/dev/null | \
+    grep "iPhone" | \
+    head -1 | \
+    sed 's/^[[:space:]]*//' | \
+    sed 's/ (.*$//'
 }
 
 check_project_file() {

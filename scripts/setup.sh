@@ -684,9 +684,12 @@ display_next_steps() {
   echo "Project Type: $PROJECT_TYPE"
   echo
   log_info "Next steps:"
-  echo "  1. Open $PROJECT_NAME.xcodeproj in Xcode"
-  echo "  2. Update bundle identifier in project.yml if needed"
-  echo "  3. Start building your app!"
+  echo "  1. Configure simulators for building and testing:"
+  echo "     ./scripts/simulator.sh list"
+  echo "     ./scripts/simulator.sh config-tests \"iPhone 16 Pro\""
+  echo "  2. Open $PROJECT_NAME.xcodeproj in Xcode"
+  echo "  3. Update bundle identifier in project.yml if needed"
+  echo "  4. Start building your app!"
   echo
   log_info "Available commands:"
   echo "  ./scripts/build.sh                    # Build for simulator"
@@ -694,7 +697,7 @@ display_next_steps() {
   echo "  ./scripts/lint.sh --fix               # Fix linting issues"
   echo "  ./scripts/format.sh --fix             # Fix formatting"
   echo "  ./scripts/preflight.sh                # Full CI check"
-  echo "  ./scripts/simulator.sh list           # List simulators"
+  echo "  ./scripts/simulator.sh list           # List available simulators"
   echo
   log_info "Need help? Check README.md or CLAUDE.md for guidance."
 }

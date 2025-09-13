@@ -42,7 +42,18 @@ rm -rf .git && git init
 ./scripts/setup.sh --project-name "MyAwesomeApp" --public
 ```
 
-### 3. Start Developing
+### 3. Configure Simulators
+
+```bash
+# List available simulators
+./scripts/simulator.sh list
+
+# Configure simulators for testing (choose available device)
+./scripts/simulator.sh config-tests "iPhone 16 Pro"
+./scripts/simulator.sh config-ui-tests "iPad Air 11-inch"
+```
+
+### 4. Start Developing
 
 ```bash
 # Open in Xcode
