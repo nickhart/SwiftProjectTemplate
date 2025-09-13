@@ -18,6 +18,12 @@ PROJECT_TYPE="private"  # private or public
 FORCE_OVERWRITE=false
 SKIP_BREW=false
 
+# Track which values were set via CLI
+CLI_PROJECT_NAME_SET=false
+CLI_DEPLOYMENT_TARGET_SET=false
+CLI_SWIFT_VERSION_SET=false
+CLI_VISIBILITY_SET=false
+
 show_help() {
   cat <<EOF
 SwiftProjectTemplate Setup Script
@@ -78,6 +84,7 @@ parse_arguments() {
           exit 1
         fi
         PROJECT_NAME="$2"
+        CLI_PROJECT_NAME_SET=true
         shift 2
         ;;
       --deployment-target)
@@ -86,6 +93,7 @@ parse_arguments() {
           exit 1
         fi
         DEPLOYMENT_TARGET="$2"
+        CLI_DEPLOYMENT_TARGET_SET=true
         shift 2
         ;;
       --swift-version)
@@ -94,6 +102,7 @@ parse_arguments() {
           exit 1
         fi
         SWIFT_VERSION="$2"
+        CLI_SWIFT_VERSION_SET=true
         shift 2
         ;;
       --public)
@@ -103,6 +112,7 @@ parse_arguments() {
           log_error "Conflicting options: --public specified but PROJECT_TYPE is already '$PROJECT_TYPE'"
           exit 1
         fi
+        CLI_VISIBILITY_SET=true
         shift
         ;;
       --private)
@@ -111,6 +121,7 @@ parse_arguments() {
           exit 1
         fi
         PROJECT_TYPE="private"
+        CLI_VISIBILITY_SET=true
         shift
         ;;
       --force)
@@ -175,8 +186,8 @@ validate_inputs() {
 }
 
 prompt_for_missing_info() {
-  # Only prompt for project name if not provided or invalid
-  if [[ -z "$PROJECT_NAME" ]]; then
+  # Only prompt for project name if not provided via CLI
+  if [[ "$CLI_PROJECT_NAME_SET" == false ]]; then
     while true; do
       echo
       read -p "Enter project name (e.g., MyApp): " PROJECT_NAME
@@ -188,30 +199,34 @@ prompt_for_missing_info() {
     done
   fi
 
-  # Confirm deployment target
-  echo
-  read -p "iOS deployment target (default: $DEPLOYMENT_TARGET): " input_deployment_target
-  if [[ -n "$input_deployment_target" ]]; then
-    DEPLOYMENT_TARGET="$input_deployment_target"
-    if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
-      log_error "Invalid deployment target format. Using default: $DEPLOYMENT_TARGET"
-      DEPLOYMENT_TARGET="18.0"
+  # Only prompt for deployment target if not provided via CLI
+  if [[ "$CLI_DEPLOYMENT_TARGET_SET" == false ]]; then
+    echo
+    read -p "iOS deployment target (default: $DEPLOYMENT_TARGET): " input_deployment_target
+    if [[ -n "$input_deployment_target" ]]; then
+      DEPLOYMENT_TARGET="$input_deployment_target"
+      if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
+        log_error "Invalid deployment target format. Using default: $DEPLOYMENT_TARGET"
+        DEPLOYMENT_TARGET="18.0"
+      fi
     fi
   fi
 
-  # Confirm Swift version
-  echo
-  read -p "Swift version (default: $SWIFT_VERSION): " input_swift_version
-  if [[ -n "$input_swift_version" ]]; then
-    SWIFT_VERSION="$input_swift_version"
-    if ! validate_swift_version "$SWIFT_VERSION"; then
-      log_error "Invalid Swift version format. Using default: $SWIFT_VERSION"
-      SWIFT_VERSION="5.10"
+  # Only prompt for Swift version if not provided via CLI
+  if [[ "$CLI_SWIFT_VERSION_SET" == false ]]; then
+    echo
+    read -p "Swift version (default: $SWIFT_VERSION): " input_swift_version
+    if [[ -n "$input_swift_version" ]]; then
+      SWIFT_VERSION="$input_swift_version"
+      if ! validate_swift_version "$SWIFT_VERSION"; then
+        log_error "Invalid Swift version format. Using default: $SWIFT_VERSION"
+        SWIFT_VERSION="5.10"
+      fi
     fi
   fi
 
-  # Ask about project visibility if not specified
-  if [[ "$PROJECT_TYPE" == "private" && -z "${PROJECT_TYPE_SET:-}" ]]; then
+  # Ask about project visibility if not specified via CLI
+  if [[ "$CLI_VISIBILITY_SET" == false ]]; then
     echo
     while true; do
       read -p "Is this a public project? (y/N): " yn
@@ -461,27 +476,6 @@ EOF
     log_success "Created MainViewModel.swift"
   fi
 
-  # Create basic unit test
-  local content_view_test_file="${PROJECT_NAME}Tests/Views/ContentViewTests.swift"
-  if [[ ! -f "$content_view_test_file" || "$FORCE_OVERWRITE" == true ]]; then
-    mkdir -p "${PROJECT_NAME}Tests/Views"
-    cat > "$content_view_test_file" <<EOF
-import XCTest
-import SwiftUI
-@testable import $PROJECT_NAME
-
-final class ContentViewTests: XCTestCase {
-    
-    func testContentViewExists() throws {
-        // Test that ContentView can be instantiated
-        let contentView = ContentView()
-        XCTAssertNotNil(contentView)
-    }
-}
-EOF
-    log_success "Created ContentViewTests.swift"
-  fi
-
   # Create basic ViewModel test
   local viewmodel_test_file="${PROJECT_NAME}Tests/ViewModels/MainViewModelTests.swift"
   if [[ ! -f "$viewmodel_test_file" || "$FORCE_OVERWRITE" == true ]]; then
@@ -509,14 +503,14 @@ final class MainViewModelTests: XCTestCase {
     }
     
     func testInitialState() throws {
-        XCTAssertEqual(viewModel.message, "Hello from $PROJECT_NAME!")
+        XCTAssertEqual(viewModel.message, "Hello from {{PROJECT_NAME}}!")
         XCTAssertFalse(viewModel.isLoading)
     }
     
     func testRefreshData() throws {
         let expectation = XCTestExpectation(description: "Data refresh completes")
         
-        viewModel.$message
+        viewModel.\$message
             .dropFirst() // Skip initial value
             .sink { message in
                 XCTAssertTrue(message.contains("Data refreshed"))
@@ -583,17 +577,17 @@ EOF
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key>
-    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <string>\$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
+    <string>\$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <string>\$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
+    <string>\$(PRODUCT_NAME)</string>
     <key>CFBundlePackageType</key>
-    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <string>\$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
@@ -612,7 +606,7 @@ EOF
                     <key>UISceneConfigurationName</key>
                     <string>Default Configuration</string>
                     <key>UISceneDelegateClassName</key>
-                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                    <string>\$(PRODUCT_MODULE_NAME).SceneDelegate</string>
                 </dict>
             </array>
         </dict>

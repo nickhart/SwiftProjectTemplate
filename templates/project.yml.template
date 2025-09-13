@@ -7,8 +7,8 @@ options:
   xcodeVersion: "15.0"
   generateEmptyDirectories: true
 
-packages:
-  # Add Swift Package Manager dependencies here
+# packages:
+  # Add Swift Package Manager dependencies here when needed
   # Example:
   # Alamofire:
   #   url: https://github.com/Alamofire/Alamofire
