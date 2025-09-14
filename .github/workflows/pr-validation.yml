@@ -78,7 +78,7 @@ jobs:
           cd ci-test-project
 
           # Run setup script from template root, but in the ci-test-project context
-          ../scripts/setup.sh \
+          ./scripts/setup.sh \
             --project-name "CITestApp" \
             --bundle-id-root "com.ci.test" \
             --test-framework "swift-testing" \
