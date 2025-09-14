@@ -38,7 +38,7 @@ EXAMPLES:
 
 CONFIGURATION:
   SwiftLint configuration is read from .swiftlint.yml in the project root.
-  
+
 EOF
 }
 
@@ -77,13 +77,13 @@ parse_arguments() {
 
 check_swiftlint_config() {
   local config_file=".swiftlint.yml"
-  
+
   if [[ ! -f "$config_file" ]]; then
     log_warning "SwiftLint configuration not found: $config_file"
     log_info "Using SwiftLint default rules"
     return
   fi
-  
+
   # Validate YAML syntax
   if command_exists yq; then
     if ! yq eval '.' "$config_file" >/dev/null 2>&1; then
@@ -91,34 +91,34 @@ check_swiftlint_config() {
       exit 1
     fi
   fi
-  
+
   log_info "Using SwiftLint configuration: $config_file"
 }
 
 get_source_directories() {
   local source_dirs=()
-  
-  if [[ -f "project.yml" && command_exists yq ]]; then
+
+  if [[ -f "project.yml" ]] && command_exists yq ; then
     local project_name
     project_name=$(yq eval '.name' project.yml 2>/dev/null || echo "")
-    
+
     if [[ -n "$project_name" && "$project_name" != "null" ]]; then
       # Add main source directory if it exists
       if [[ -d "$project_name" ]]; then
         source_dirs+=("$project_name")
       fi
-      
+
       # Add test directories if they exist
       if [[ -d "${project_name}Tests" ]]; then
         source_dirs+=("${project_name}Tests")
       fi
-      
+
       if [[ -d "${project_name}UITests" ]]; then
         source_dirs+=("${project_name}UITests")
       fi
     fi
   fi
-  
+
   # Fallback: look for common Swift source directories
   if [[ ${#source_dirs[@]} -eq 0 ]]; then
     for dir in Sources App Tests; do
@@ -127,24 +127,24 @@ get_source_directories() {
       fi
     done
   fi
-  
+
   # If still no directories found, lint current directory
   if [[ ${#source_dirs[@]} -eq 0 ]]; then
     source_dirs+=(".")
   fi
-  
+
   echo "${source_dirs[@]}"
 }
 
 run_swiftlint() {
   local source_dirs
   read -a source_dirs <<< "$(get_source_directories)"
-  
+
   log_info "SwiftLint directories: ${source_dirs[*]}"
-  
+
   # Prepare SwiftLint arguments
   local swiftlint_args=()
-  
+
   if $FIX_ISSUES; then
     swiftlint_args+=("--fix")
     log_info "Running SwiftLint with auto-fix enabled..."
@@ -152,29 +152,29 @@ run_swiftlint() {
     swiftlint_args+=("lint")
     log_info "Running SwiftLint check..."
   fi
-  
+
   if $STRICT_MODE; then
     swiftlint_args+=("--strict")
   fi
-  
+
   if $QUIET_MODE; then
     swiftlint_args+=("--quiet")
   fi
-  
+
   # Add source directories
   for dir in "${source_dirs[@]}"; do
     swiftlint_args+=("$dir")
   done
-  
+
   # Run SwiftLint
   local start_time
   start_time=$(date +%s)
-  
+
   if swiftlint "${swiftlint_args[@]}"; then
     local end_time duration
     end_time=$(date +%s)
     duration=$((end_time - start_time))
-    
+
     if $FIX_ISSUES; then
       log_success "SwiftLint auto-fix completed in ${duration}s"
     else
@@ -185,7 +185,7 @@ run_swiftlint() {
     local end_time duration
     end_time=$(date +%s)
     duration=$((end_time - start_time))
-    
+
     if $FIX_ISSUES; then
       log_warning "SwiftLint auto-fix completed with issues in ${duration}s"
       log_info "Some issues may require manual attention"
@@ -196,7 +196,7 @@ run_swiftlint() {
         log_warning "SwiftLint check found issues in ${duration}s"
       fi
     fi
-    
+
     return $exit_code
   fi
 }
@@ -214,7 +214,7 @@ show_lint_summary() {
     echo "  • Check .swiftlint.yml to customize rules"
     echo "  • Some rules may require code refactoring"
   fi
-  
+
   echo
   log_info "Next steps:"
   if $FIX_ISSUES; then
@@ -232,17 +232,17 @@ show_lint_summary() {
 main() {
   log_info "SwiftLint Code Quality Check"
   echo
-  
+
   parse_arguments "$@"
-  
+
   if ! check_required_tools swiftlint; then
     log_error "SwiftLint is not installed"
     log_info "Install with: brew install swiftlint"
     exit 1
   fi
-  
+
   check_swiftlint_config
-  
+
   if run_swiftlint; then
     show_lint_summary
     exit 0

@@ -36,7 +36,7 @@ EXAMPLES:
 
 CONFIGURATION:
   SwiftFormat configuration is read from .swiftformat in the project root.
-  
+
 EOF
 }
 
@@ -72,40 +72,40 @@ parse_arguments() {
 
 check_swiftformat_config() {
   local config_file=".swiftformat"
-  
+
   if [[ ! -f "$config_file" ]]; then
     log_warning "SwiftFormat configuration not found: $config_file"
     log_info "Using SwiftFormat default settings"
     return
   fi
-  
+
   log_info "Using SwiftFormat configuration: $config_file"
 }
 
 get_source_directories() {
   local source_dirs=()
-  
-  if [[ -f "project.yml" && command_exists yq ]]; then
+
+  if [[ -f "project.yml" ]] && command_exists yq ; then
     local project_name
     project_name=$(yq eval '.name' project.yml 2>/dev/null || echo "")
-    
+
     if [[ -n "$project_name" && "$project_name" != "null" ]]; then
       # Add main source directory if it exists
       if [[ -d "$project_name" ]]; then
         source_dirs+=("$project_name")
       fi
-      
+
       # Add test directories if they exist
       if [[ -d "${project_name}Tests" ]]; then
         source_dirs+=("${project_name}Tests")
       fi
-      
+
       if [[ -d "${project_name}UITests" ]]; then
         source_dirs+=("${project_name}UITests")
       fi
     fi
   fi
-  
+
   # Fallback: look for common Swift source directories
   if [[ ${#source_dirs[@]} -eq 0 ]]; then
     for dir in Sources App Tests; do
@@ -114,50 +114,50 @@ get_source_directories() {
       fi
     done
   fi
-  
+
   # If still no directories found, format current directory
   if [[ ${#source_dirs[@]} -eq 0 ]]; then
     source_dirs+=(".")
   fi
-  
+
   echo "${source_dirs[@]}"
 }
 
 run_swiftformat() {
   local source_dirs
   read -a source_dirs <<< "$(get_source_directories)"
-  
+
   log_info "SwiftFormat directories: ${source_dirs[*]}"
-  
+
   # Prepare SwiftFormat arguments
   local swiftformat_args=()
-  
+
   if $CHECK_ONLY; then
     swiftformat_args+=("--lint")
     log_info "Running SwiftFormat check..."
   else
     log_info "Running SwiftFormat with auto-fix enabled..."
   fi
-  
+
   if $VERBOSE; then
     swiftformat_args+=("--verbose")
   fi
-  
+
   # Add source directories
   for dir in "${source_dirs[@]}"; do
     swiftformat_args+=("$dir")
   done
-  
+
   # Run SwiftFormat
   local start_time
   start_time=$(date +%s)
-  
+
   local exit_code=0
   if swiftformat "${swiftformat_args[@]}"; then
     local end_time duration
     end_time=$(date +%s)
     duration=$((end_time - start_time))
-    
+
     if $CHECK_ONLY; then
       log_success "SwiftFormat check passed in ${duration}s"
     else
@@ -168,14 +168,14 @@ run_swiftformat() {
     local end_time duration
     end_time=$(date +%s)
     duration=$((end_time - start_time))
-    
+
     if $CHECK_ONLY; then
       log_warning "SwiftFormat check found formatting issues in ${duration}s"
     else
       log_error "SwiftFormat encountered errors in ${duration}s"
     fi
   fi
-  
+
   return $exit_code
 }
 
@@ -192,7 +192,7 @@ show_format_summary() {
     echo "  • Review the changes before committing"
     echo "  • Consider running SwiftLint for additional code quality checks"
   fi
-  
+
   echo
   log_info "Next steps:"
   if $CHECK_ONLY; then
@@ -210,17 +210,17 @@ show_format_summary() {
 main() {
   log_info "SwiftFormat Code Formatting"
   echo
-  
+
   parse_arguments "$@"
-  
+
   if ! check_required_tools swiftformat; then
     log_error "SwiftFormat is not installed"
     log_info "Install with: brew install swiftformat"
     exit 1
   fi
-  
+
   check_swiftformat_config
-  
+
   if run_swiftformat; then
     show_format_summary
     exit 0

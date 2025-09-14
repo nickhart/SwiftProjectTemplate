@@ -674,7 +674,7 @@ EOF
 import XCTest
 
 final class ${PROJECT_NAME}UITests: XCTestCase {
-    var app: XCUIApplication!
+    var app: XCUIApplication
 
     override func setUpWithError() throws {
         continueAfterFailure = false
