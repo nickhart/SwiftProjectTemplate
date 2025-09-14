@@ -129,8 +129,13 @@ run_swiftformat() {
 
   log_info "SwiftFormat directories: ${source_dirs[*]}"
 
-  # Prepare SwiftFormat arguments
+  # Prepare SwiftFormat arguments (directories first, then options)
   local swiftformat_args=()
+
+  # Add source directories first
+  for dir in "${source_dirs[@]}"; do
+    swiftformat_args+=("$dir")
+  done
 
   if $CHECK_ONLY; then
     swiftformat_args+=("--lint")
@@ -142,11 +147,6 @@ run_swiftformat() {
   if $VERBOSE; then
     swiftformat_args+=("--verbose")
   fi
-
-  # Add source directories
-  for dir in "${source_dirs[@]}"; do
-    swiftformat_args+=("$dir")
-  done
 
   # Run SwiftFormat
   local start_time

@@ -195,7 +195,7 @@ run_build() {
     build_args+=("--verbose")
   fi
   
-  if ./scripts/build.sh "${build_args[@]}"; then
+  if ./scripts/build.sh "${build_args[@]+"${build_args[@]}"}"; then
     log_success "✅ Build check passed"
   else
     log_error "❌ Build check failed"

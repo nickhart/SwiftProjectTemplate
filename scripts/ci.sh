@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# CI script for SwiftProjectTemplate projects
-# Optimized for continuous integration environments
+# CI Utility script for SwiftProjectTemplate projects
+# GitHub CLI wrapper for common CI operations
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -10,57 +10,63 @@ cd "$ROOT_DIR"
 # Source helper functions
 source "$(dirname "${BASH_SOURCE[0]}")/_helpers.sh"
 
-# CI-specific configuration
-export CI=true
-CONFIGURATION="Debug"
-ENABLE_COVERAGE=true
-FAIL_ON_WARNINGS=true
+# Default values
+SHOW_ALL_RUNS=false
+LIMIT=10
 
 show_help() {
   cat <<EOF
-CI Script
+CI Utility Script
 
-Optimized script for continuous integration environments. Runs comprehensive
-checks with CI-specific optimizations and reporting.
+GitHub CLI wrapper for common CI operations and workflow management.
+Use this script to easily interact with GitHub Actions CI runs.
 
 USAGE:
-  $0 [OPTIONS]
+  $0 <command> [options]
 
-OPTIONS:
-  --release                Use Release configuration (default: Debug)
-  --no-coverage            Disable code coverage collection
-  --allow-warnings         Don't treat warnings as errors
+COMMANDS:
+  status                   Show status of latest CI run
+  list                     List recent CI runs (default: 10)
+  logs [run-id]            Show logs for specific run (latest if no ID)
+  rerun [run-id]           Rerun a specific workflow run (latest if no ID)
+  watch                    Watch the latest run in real-time
+  workflow <name>          Trigger a specific workflow
+  runs                     Open GitHub Actions page in browser
+
+OPTIONS (for list command):
+  --all                    Show all runs (not just latest workflow)
+  --limit N                Show N runs (default: 10)
   --help                   Show this help message
 
 EXAMPLES:
-  $0                       # Standard CI run
-  $0 --release             # CI run with Release configuration
-  $0 --no-coverage         # CI run without coverage
+  $0 status                # Show latest CI run status
+  $0 list                  # List 10 most recent runs
+  $0 list --limit 20       # List 20 most recent runs
+  $0 logs                  # Show logs for latest run
+  $0 logs 1234567890       # Show logs for specific run ID
+  $0 rerun                 # Rerun latest run
+  $0 watch                 # Watch latest run progress
+  $0 workflow "CI"         # Trigger CI workflow
+  $0 runs                  # Open Actions page in browser
 
-CI OPTIMIZATIONS:
-  • No interactive prompts
-  • Structured logging for CI parsers
-  • Fail fast on critical errors
-  • Code coverage collection
-  • Detailed error reporting
-  
+PREREQUISITES:
+  • GitHub CLI (gh) must be installed and authenticated
+  • Repository must be connected to GitHub
+  • GitHub Actions must be enabled for the repository
+
 EOF
 }
 
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case $1 in
-      --release)
-        CONFIGURATION="Release"
+      --all)
+        SHOW_ALL_RUNS=true
         shift
         ;;
-      --no-coverage)
-        ENABLE_COVERAGE=false
-        shift
-        ;;
-      --allow-warnings)
-        FAIL_ON_WARNINGS=false
-        shift
+      --limit)
+        LIMIT="$2"
+        shift 2
         ;;
       --help|-h)
         show_help
@@ -72,299 +78,228 @@ parse_arguments() {
         exit 1
         ;;
       *)
-        log_error "Unexpected argument: $1"
-        echo "Use '$0 --help' for usage information"
-        exit 1
+        # This is a command, stop parsing
+        break
         ;;
     esac
   done
 }
 
-print_ci_header() {
-  echo "::group::CI Environment Info"
-  log_info "CI Environment Information"
-  echo "  • Configuration: $CONFIGURATION"
-  echo "  • Coverage: $(if $ENABLE_COVERAGE; then echo "enabled"; else echo "disabled"; fi)"
-  echo "  • Fail on warnings: $(if $FAIL_ON_WARNINGS; then echo "yes"; else echo "no"; fi)"
-  echo "  • Working directory: $ROOT_DIR"
-  echo "  • Date: $(date)"
-  echo "::endgroup::"
-  echo
-}
-
-check_ci_prerequisites() {
-  echo "::group::Prerequisites Check"
-  log_info "Checking CI prerequisites..."
-  
-  # Check for required tools
-  local required_tools=(swiftformat swiftlint xcodebuild yq)
-  local missing_tools=()
-  
-  for tool in "${required_tools[@]}"; do
-    if ! command_exists "$tool"; then
-      missing_tools+=("$tool")
-    else
-      local version
-      case $tool in
-        swiftformat)
-          version=$(swiftformat --version 2>/dev/null || echo "unknown")
-          ;;
-        swiftlint)
-          version=$(swiftlint version 2>/dev/null || echo "unknown")
-          ;;
-        xcodebuild)
-          version=$(xcodebuild -version | head -1 2>/dev/null || echo "unknown")
-          ;;
-        yq)
-          version=$(yq --version 2>/dev/null || echo "unknown")
-          ;;
-      esac
-      echo "  ✓ $tool: $version"
-    fi
-  done
-  
-  if [[ ${#missing_tools[@]} -gt 0 ]]; then
-    log_error "Missing required tools: ${missing_tools[*]}"
-    echo "::error::Missing CI tools: ${missing_tools[*]}"
+check_prerequisites() {
+  if ! check_required_tools gh; then
+    log_error "GitHub CLI (gh) is required but not installed"
+    log_info "Install with: brew install gh"
+    log_info "Then authenticate with: gh auth login"
     exit 1
   fi
   
-  # Check project structure
-  if [[ ! -f "project.yml" ]]; then
-    log_error "project.yml not found"
-    echo "::error::project.yml configuration file not found"
+  # Check if authenticated
+  if ! gh auth status &>/dev/null; then
+    log_error "GitHub CLI is not authenticated"
+    log_info "Run: gh auth login"
     exit 1
   fi
   
-  local project_name
-  project_name=$(yq eval '.name' project.yml)
-  if [[ ! -d "${project_name}.xcodeproj" ]]; then
-    log_warning "Xcode project not found, will generate"
+  # Check if in a git repo with remote
+  if ! git remote get-url origin &>/dev/null; then
+    log_error "No git remote 'origin' found"
+    log_info "This command requires a GitHub repository"
+    exit 1
   fi
-  
-  log_success "Prerequisites check passed"
-  echo "::endgroup::"
-  echo
 }
 
-generate_xcode_project_ci() {
-  echo "::group::Xcode Project Generation"
-  log_info "Generating Xcode project..."
+show_status() {
+  log_info "Latest CI Run Status"
+  echo
   
-  if ./scripts/xcodegen-config.sh --skip-generation; then
-    log_info "Running XcodeGen..."
-    if xcodegen generate; then
-      log_success "Xcode project generated"
-    else
-      log_error "Failed to generate Xcode project"
-      echo "::error::XcodeGen failed to generate project"
+  local latest_run
+  latest_run=$(gh run list --limit 1 --json databaseId,status,conclusion,workflowName,headBranch,createdAt,url --jq '.[0]')
+  
+  if [[ -z "$latest_run" || "$latest_run" == "null" ]]; then
+    log_warning "No CI runs found"
+    return 0
+  fi
+  
+  local status conclusion workflow branch created_at url
+  status=$(echo "$latest_run" | jq -r '.status')
+  conclusion=$(echo "$latest_run" | jq -r '.conclusion // "running"')
+  workflow=$(echo "$latest_run" | jq -r '.workflowName')
+  branch=$(echo "$latest_run" | jq -r '.headBranch')
+  created_at=$(echo "$latest_run" | jq -r '.createdAt')
+  url=$(echo "$latest_run" | jq -r '.url')
+  
+  echo "  • Workflow: $workflow"
+  echo "  • Branch: $branch"
+  echo "  • Status: $status"
+  echo "  • Conclusion: $conclusion"
+  echo "  • Created: $created_at"
+  echo "  • URL: $url"
+  echo
+  
+  if [[ "$status" == "in_progress" ]]; then
+    log_info "Use '$0 watch' to follow progress in real-time"
+  elif [[ "$conclusion" == "failure" ]]; then
+    log_info "Use '$0 logs' to view error details"
+  fi
+}
+
+list_runs() {
+  log_info "Recent CI Runs"
+  echo
+  
+  local list_args=(--limit "$LIMIT")
+  if [[ "$SHOW_ALL_RUNS" == "true" ]]; then
+    gh run list "${list_args[@]}"
+  else
+    gh run list "${list_args[@]}" --workflow "$(get_primary_workflow)"
+  fi
+}
+
+get_primary_workflow() {
+  # Try to find the most common workflow name
+  local primary_workflow
+  primary_workflow=$(gh run list --limit 50 --json workflowName --jq '.[] | .workflowName' | sort | uniq -c | sort -nr | head -1 | awk '{print $2}')
+  echo "${primary_workflow:-CI}"
+}
+
+show_logs() {
+  local run_id="$1"
+  
+  if [[ -z "$run_id" ]]; then
+    log_info "Getting logs for latest run..."
+    run_id=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
+    
+    if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+      log_error "No runs found"
       exit 1
     fi
-  else
-    log_error "XcodeGen configuration validation failed"
-    echo "::error::XcodeGen configuration is invalid"
-    exit 1
   fi
   
-  echo "::endgroup::"
+  log_info "Showing logs for run ID: $run_id"
   echo
+  gh run view "$run_id" --log
 }
 
-run_swiftformat_ci() {
-  echo "::group::SwiftFormat Check"
-  log_info "Running SwiftFormat check..."
+rerun_workflow() {
+  local run_id="$1"
   
-  # CI mode - no auto-fix, strict checking
-  if ./scripts/format.sh; then
-    log_success "SwiftFormat check passed"
-  else
-    log_error "SwiftFormat check failed"
-    echo "::error::Code formatting issues found"
-    exit 1
-  fi
-  
-  echo "::endgroup::"
-  echo
-}
-
-run_swiftlint_ci() {
-  echo "::group::SwiftLint Check"
-  log_info "Running SwiftLint check..."
-  
-  local lint_args=()
-  if $FAIL_ON_WARNINGS; then
-    lint_args+=("--strict")
-  fi
-  
-  if ./scripts/lint.sh "${lint_args[@]}"; then
-    log_success "SwiftLint check passed"
-  else
-    local exit_code=$?
-    if $FAIL_ON_WARNINGS || [[ $exit_code -eq 1 ]]; then
-      log_error "SwiftLint check failed"
-      echo "::error::Code quality issues found"
+  if [[ -z "$run_id" ]]; then
+    log_info "Getting latest run for rerun..."
+    run_id=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
+    
+    if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+      log_error "No runs found"
       exit 1
-    else
-      log_warning "SwiftLint found warnings"
-      echo "::warning::SwiftLint found warnings"
     fi
   fi
   
-  echo "::endgroup::"
-  echo
+  log_info "Rerunning workflow run: $run_id"
+  
+  if gh run rerun "$run_id"; then
+    log_success "Workflow rerun triggered successfully"
+    log_info "Use '$0 watch' to follow progress"
+  else
+    log_error "Failed to rerun workflow"
+    exit 1
+  fi
 }
 
-run_build_ci() {
-  echo "::group::Project Build"
-  log_info "Building project..."
+watch_run() {
+  log_info "Watching latest CI run..."
   
-  local build_args=()
-  if [[ "$CONFIGURATION" == "Release" ]]; then
-    build_args+=("--release")
-  fi
+  local run_id
+  run_id=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
   
-  if ./scripts/build.sh "${build_args[@]}"; then
-    log_success "Build completed"
-  else
-    log_error "Build failed"
-    echo "::error::Project build failed"
+  if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+    log_error "No runs found to watch"
     exit 1
   fi
   
-  echo "::endgroup::"
-  echo
+  gh run watch "$run_id"
 }
 
-run_tests_ci() {
-  echo "::group::Tests"
-  log_info "Running tests..."
+trigger_workflow() {
+  local workflow_name="$1"
   
-  local test_args=("--all")
-  if [[ "$CONFIGURATION" == "Release" ]]; then
-    test_args+=("--release")
-  fi
-  if ! $ENABLE_COVERAGE; then
-    test_args+=("--no-coverage")
+  if [[ -z "$workflow_name" ]]; then
+    log_error "Workflow name is required"
+    log_info "Use: $0 workflow <workflow-name>"
+    exit 1
   fi
   
-  # In CI, we want to see test output but not fail on UI test flakiness
-  if ./scripts/test.sh "${test_args[@]}"; then
-    log_success "All tests passed"
+  log_info "Triggering workflow: $workflow_name"
+  
+  if gh workflow run "$workflow_name"; then
+    log_success "Workflow triggered successfully"
+    sleep 2  # Give GitHub a moment to process
+    log_info "Use '$0 status' to check progress"
   else
-    local exit_code=$?
-    log_warning "Tests completed with issues (exit code: $exit_code)"
-    echo "::warning::Some tests failed - check logs above"
-    # Don't fail CI for test failures as they might be environment-specific
+    log_error "Failed to trigger workflow"
+    log_info "Available workflows:"
+    gh workflow list
+    exit 1
   fi
-  
-  echo "::endgroup::"
-  echo
 }
 
-generate_ci_artifacts() {
-  echo "::group::CI Artifacts"
-  log_info "Generating CI artifacts..."
-  
-  # Create artifacts directory
-  mkdir -p ci-artifacts
-  
-  # Copy configuration files
-  cp project.yml ci-artifacts/ 2>/dev/null || true
-  cp .swiftlint.yml ci-artifacts/ 2>/dev/null || true
-  cp .swiftformat ci-artifacts/ 2>/dev/null || true
-  cp simulator.yml ci-artifacts/ 2>/dev/null || true
-  
-  # Generate build info
-  cat > ci-artifacts/build-info.txt <<EOF
-Build Information
-================
-Date: $(date)
-Configuration: $CONFIGURATION
-Coverage: $(if $ENABLE_COVERAGE; then echo "enabled"; else echo "disabled"; fi)
-Git Commit: $(git rev-parse HEAD 2>/dev/null || echo "unknown")
-Git Branch: $(git branch --show-current 2>/dev/null || echo "unknown")
-
-Tool Versions:
-SwiftFormat: $(swiftformat --version 2>/dev/null || echo "unknown")
-SwiftLint: $(swiftlint version 2>/dev/null || echo "unknown")
-Xcode: $(xcodebuild -version | head -1 2>/dev/null || echo "unknown")
-EOF
-  
-  log_success "CI artifacts generated in ci-artifacts/"
-  echo "::endgroup::"
-  echo
-}
-
-show_ci_summary() {
-  echo "::group::CI Summary"
-  echo "🎉 CI Pipeline Completed Successfully!"
-  echo
-  
-  local project_name=""
-  if [[ -f "project.yml" ]]; then
-    project_name=$(yq eval '.name' project.yml 2>/dev/null || echo "Unknown")
-  fi
-  
-  echo "Project: $project_name"
-  echo "Configuration: $CONFIGURATION"
-  echo "Status: ✅ PASSED"
-  echo
-  
-  echo "Checks completed:"
-  echo "  ✅ Code formatting (SwiftFormat)"
-  echo "  ✅ Code quality (SwiftLint)"
-  echo "  ✅ Project build"
-  echo "  ✅ Tests execution"
-  echo "  ✅ CI artifacts generated"
-  
-  echo "::endgroup::"
-}
-
-show_ci_failure() {
-  echo "::group::CI Failure Summary"
-  echo "❌ CI Pipeline Failed"
-  echo
-  echo "Check the logs above for specific failure details."
-  echo "Common CI issues:"
-  echo "  • Code formatting violations"
-  echo "  • SwiftLint rule violations" 
-  echo "  • Build configuration errors"
-  echo "  • Missing dependencies"
-  echo
-  echo "::error::CI pipeline failed - check logs for details"
-  echo "::endgroup::"
+open_runs() {
+  log_info "Opening GitHub Actions page..."
+  gh run list --web
 }
 
 # Main execution
 main() {
-  print_ci_header
-  
   parse_arguments "$@"
   
-  local start_time
-  start_time=$(date +%s)
+  # Skip the parsed arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --all|--limit)
+        shift
+        [[ "$1" =~ ^--.*$ ]] || shift  # Skip value if it's not another option
+        ;;
+      --*)
+        shift
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
   
-  # Run CI pipeline
-  check_ci_prerequisites
-  generate_xcode_project_ci
-  run_swiftformat_ci
-  run_swiftlint_ci
-  run_build_ci
-  run_tests_ci
-  generate_ci_artifacts
+  local command="${1:-status}"
+  shift || true
   
-  local end_time duration
-  end_time=$(date +%s)
-  duration=$((end_time - start_time))
+  check_prerequisites
   
-  show_ci_summary
-  log_info "Total CI time: ${duration}s"
-  
-  exit 0
+  case "$command" in
+    status)
+      show_status
+      ;;
+    list)
+      list_runs
+      ;;
+    logs)
+      show_logs "${1:-}"
+      ;;
+    rerun)
+      rerun_workflow "${1:-}"
+      ;;
+    watch)
+      watch_run
+      ;;
+    workflow)
+      trigger_workflow "${1:-}"
+      ;;
+    runs)
+      open_runs
+      ;;
+    *)
+      log_error "Unknown command: $command"
+      echo "Use '$0 --help' for usage information"
+      exit 1
+      ;;
+  esac
 }
-
-# Handle CI failures
-trap 'show_ci_failure; exit 1' ERR
 
 # Run main function with all arguments
 main "$@"

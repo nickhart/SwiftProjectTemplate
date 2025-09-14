@@ -179,8 +179,10 @@ ensure_project_structure_exists() {
   )
 
   # Check each target's source directories
-  local target_dirs
-  mapfile -t target_dirs < <(yq eval '.targets[].sources[]' "$ROOT_DIR/project.yml" 2>/dev/null || true)
+  local target_dirs=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && target_dirs+=("$line")
+  done < <(yq eval '.targets[].sources[]' "$ROOT_DIR/project.yml" 2>/dev/null || true)
 
   for dir in "${target_dirs[@]}" "${required_dirs[@]}"; do
     if [[ -n "$dir" && "$dir" != "null" ]]; then
