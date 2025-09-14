@@ -81,8 +81,12 @@ jobs:
           ./scripts/setup.sh \
             --project-name "CITestApp" \
             --bundle-id-root "com.ci.test" \
+            --deployment-target 18.0 \
+            --swift-version 5.10 \
             --test-framework "swift-testing" \
             --no-git-hooks \
+            --public \
+            --skip-brew \
             --force || {
               echo "Setup script failed with exit code $?"
               echo "Contents of current directory:"
