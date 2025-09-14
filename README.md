@@ -8,12 +8,12 @@ A comprehensive iOS project template repository that includes all common infrast
 
 ## Features
 
-🚀 **Zero Setup Time**: Clone and run `./scripts/setup.sh` to get a fully configured iOS project  
-⚙️ **Smart Configuration**: Uses `yq` to extract project info and auto-configure simulators  
-🎨 **Code Quality**: Integrated SwiftLint, SwiftFormat, and pre-commit hooks  
-🏗️ **XcodeGen Integration**: Project files generated from `project.yml` configuration  
-🤖 **CI/CD Ready**: GitHub Actions workflow for automated testing and validation  
-📱 **Simulator Management**: Advanced simulator configuration with auto-detection  
+🚀 **Zero Setup Time**: Clone and run `./scripts/setup.sh` to get a fully configured iOS project
+⚙️ **Smart Configuration**: Uses `yq` to extract project info and auto-configure simulators
+🎨 **Code Quality**: Integrated SwiftLint, SwiftFormat, and pre-commit hooks
+🏗️ **XcodeGen Integration**: Project files generated from `project.yml` configuration
+🤖 **CI/CD Ready**: GitHub Actions workflow for automated testing and validation
+📱 **Simulator Management**: Advanced simulator configuration with auto-detection
 🔧 **Developer Tools**: Comprehensive script ecosystem for building, testing, and deployment
 
 ## Quick Start
@@ -70,7 +70,7 @@ open MyAwesomeApp.xcodeproj
 MyAwesomeApp/
 ├── MyAwesomeApp/
 │   ├── Models/              # Data models and Core Data entities
-│   ├── Views/               # SwiftUI views and UI components  
+│   ├── Views/               # SwiftUI views and UI components
 │   ├── ViewModels/          # Business logic and view state
 │   ├── Services/            # Network, persistence, business services
 │   ├── Extensions/          # Swift extensions and utilities
@@ -123,7 +123,7 @@ MyAwesomeApp/
 ### 🔧 Configuration Files
 
 - **`.swiftlint.yml`** - Comprehensive linting rules for iOS development
-- **`.swiftformat`** - Consistent code formatting configuration  
+- **`.swiftformat`** - Consistent code formatting configuration
 - **`project.yml`** - XcodeGen project definition (no more .pbxproj conflicts!)
 - **`simulator.yml`** - Simulator configuration for tests and UI tests
 - **`Brewfile`** - All development dependencies (yq, jq, xcodegen, etc.)
@@ -163,7 +163,7 @@ Configure simulators that match your project needs:
 # Configure test simulator
 ./scripts/simulator.sh --config-tests "iPhone 15 Pro" --os 17.5
 
-# Configure UI test simulator  
+# Configure UI test simulator
 ./scripts/simulator.sh --config-ui-tests "iPad Pro 12.9-inch" --force
 
 # Show current configuration
@@ -175,7 +175,7 @@ Configure simulators that match your project needs:
 ```bash
 # Daily development
 ./scripts/build.sh                    # Build project
-./scripts/test.sh --all               # Run all tests  
+./scripts/test.sh --all               # Run all tests
 ./scripts/lint.sh --fix               # Fix linting issues
 
 # Before committing
@@ -198,7 +198,7 @@ The setup script will install all other dependencies automatically.
 Installed automatically via Brewfile:
 
 - **yq** - YAML processing and manipulation
-- **jq** - JSON processing for Xcode APIs  
+- **jq** - JSON processing for Xcode APIs
 - **xcodegen** - Project file generation
 - **swiftlint** - Code linting
 - **swiftformat** - Code formatting
