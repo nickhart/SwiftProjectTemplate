@@ -133,7 +133,7 @@ get_simulator_config() {
   local test_type="$1"  # "tests" or "ui-tests"
   local config_key="simulators.$test_type"
 
-  if [[ -f "simulator.yml" && command_exists yq ]]; then
+  if [[ -f "simulator.yml" ]] && command_exists yq ; then
     local device os arch
     device=$(yq eval ".$config_key.device" simulator.yml 2>/dev/null || echo "")
     os=$(yq eval ".$config_key.os" simulator.yml 2>/dev/null || echo "")

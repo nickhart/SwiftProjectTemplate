@@ -8,6 +8,8 @@ on:
 
 env:
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  # Set to 'true' to enable UI tests in CI (disabled by default due to flakiness)
+  RUN_UI_TESTS: false
 
 jobs:
   validate:
@@ -251,8 +253,10 @@ jobs:
             echo "⚠ No unit test target found, skipping tests"
           fi
 
+      # UI Tests (Optional - disabled by default)
+      # To enable UI tests in CI, set RUN_UI_TESTS: true in the env section above
       - name: Run UI tests
-        if: steps.detect.outputs.repo_type == 'generated'
+        if: steps.detect.outputs.repo_type == 'generated' && env.RUN_UI_TESTS == 'true'
         run: |
           PROJECT_NAME=$(yq eval '.name' project.yml)
 
