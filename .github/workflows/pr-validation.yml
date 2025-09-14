@@ -64,16 +64,37 @@ jobs:
       if: steps.detect.outputs.repo_type == 'template'
       run: |
         echo "🏗️ Generating test project for E2E validation..."
+        echo "Working directory: $(pwd)"
+        echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+        
         mkdir -p ci-test-project
         cd ci-test-project
+        echo "Changed to directory: $(pwd)"
+        
+        echo "Running setup script with arguments:"
+        echo "  --project-name CITestApp"
+        echo "  --bundle-id-root com.ci.test" 
+        echo "  --test-framework swift-testing"
+        echo "  --no-git-hooks"
+        echo "  --force"
+        
+        set -x  # Enable verbose output
         ${GITHUB_WORKSPACE}/scripts/setup.sh \
           --project-name "CITestApp" \
           --bundle-id-root "com.ci.test" \
           --test-framework "swift-testing" \
           --no-git-hooks \
-          --force
+          --force || {
+            echo "Setup script failed with exit code $?"
+            echo "Contents of current directory:"
+            ls -la
+            exit 1
+          }
+        set +x  # Disable verbose output
         
         echo "✓ Test project generated successfully"
+        echo "Generated files:"
+        ls -la
         
     # Template Repository: Validate generated project
     - name: Run E2E validation on generated project
