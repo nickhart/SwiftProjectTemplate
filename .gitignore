@@ -60,3 +60,9 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# CI Test Projects (prevent accidental commits)
+/ci-test-*/
+/ci-test-project/
+/CITest*/
+/TestApp*/

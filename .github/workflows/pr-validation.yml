@@ -1,4 +1,4 @@
-name: PR Validation
+name: CI Validation
 
 on:
   pull_request:
@@ -17,6 +17,20 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      
+    - name: Detect repository type
+      id: detect
+      run: |
+        echo "Repository: $GITHUB_REPOSITORY"
+        echo "Repository name: ${GITHUB_REPOSITORY##*/}"
+        
+        if [[ "${GITHUB_REPOSITORY##*/}" == "SwiftProjectTemplate" ]]; then
+          echo "repo_type=template" >> $GITHUB_OUTPUT
+          echo "🔧 Detected SwiftProjectTemplate repository"
+        else
+          echo "repo_type=generated" >> $GITHUB_OUTPUT  
+          echo "📱 Detected generated project repository"
+        fi
       
     - name: Set up Xcode
       uses: maxim-lobanov/setup-xcode@v1
@@ -45,7 +59,38 @@ jobs:
         xcodegen --version
         yq --version
         
+    # Template Repository: Generate test project for E2E validation
+    - name: Generate test project
+      if: steps.detect.outputs.repo_type == 'template'
+      run: |
+        echo "🏗️ Generating test project for E2E validation..."
+        mkdir -p ci-test-project
+        cd ci-test-project
+        ../scripts/setup.sh \
+          --name "CITestApp" \
+          --bundle-id-root "com.ci.test" \
+          --test-framework "SwiftTesting" \
+          --git-hooks "no" \
+          --non-interactive
+        
+        echo "✓ Test project generated successfully"
+        
+    # Template Repository: Validate generated project
+    - name: Run E2E validation on generated project
+      if: steps.detect.outputs.repo_type == 'template'
+      run: |
+        echo "🔍 Running end-to-end validation on generated project..."
+        cd ci-test-project
+        
+        # Run the generated project's preflight check
+        echo "Running preflight check..."
+        ./scripts/preflight.sh
+        
+        echo "✓ E2E validation completed successfully"
+        
+    # Generated Project: Normal validation continues below
     - name: Validate project configuration
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
         # Check if project.yml exists and is valid
         if [ -f "project.yml" ]; then
@@ -61,69 +106,61 @@ jobs:
           DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
           echo "✓ iOS Deployment Target: $DEPLOYMENT_TARGET"
         else
-          echo "⚠ project.yml not found - this may be the template repository itself"
+          echo "✗ project.yml not found in generated project"
+          exit 1
         fi
         
     - name: Generate Xcode project
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
-        if [ -f "project.yml" ]; then
-          echo "Generating Xcode project..."
-          xcodegen generate
-          
-          PROJECT_NAME=$(yq eval '.name' project.yml)
-          if [ -d "${PROJECT_NAME}.xcodeproj" ]; then
-            echo "✓ Xcode project generated successfully"
-          else
-            echo "✗ Failed to generate Xcode project"
-            exit 1
-          fi
+        echo "Generating Xcode project..."
+        xcodegen generate
+        
+        PROJECT_NAME=$(yq eval '.name' project.yml)
+        if [ -d "${PROJECT_NAME}.xcodeproj" ]; then
+          echo "✓ Xcode project generated successfully"
         else
-          echo "Skipping Xcode project generation - no project.yml found"
+          echo "✗ Failed to generate Xcode project"
+          exit 1
         fi
         
     - name: SwiftLint
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
-        if [ -f "project.yml" ]; then
-          echo "Running SwiftLint..."
-          
-          # Get project name and check if source directories exist
-          PROJECT_NAME=$(yq eval '.name' project.yml)
-          
-          if [ -d "$PROJECT_NAME" ]; then
-            swiftlint lint --strict
-            echo "✓ SwiftLint passed"
-          else
-            echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftLint"
-          fi
+        echo "Running SwiftLint..."
+        
+        # Get project name and check if source directories exist
+        PROJECT_NAME=$(yq eval '.name' project.yml)
+        
+        if [ -d "$PROJECT_NAME" ]; then
+          swiftlint lint --strict
+          echo "✓ SwiftLint passed"
         else
-          echo "Skipping SwiftLint - no project.yml found"
+          echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftLint"
         fi
         
     - name: SwiftFormat check
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
-        if [ -f "project.yml" ]; then
-          echo "Checking SwiftFormat..."
-          
-          PROJECT_NAME=$(yq eval '.name' project.yml)
-          
-          if [ -d "$PROJECT_NAME" ]; then
-            # Check if code is properly formatted
-            swiftformat --lint $PROJECT_NAME
-            echo "✓ SwiftFormat check passed"
-          else
-            echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftFormat"
-          fi
+        echo "Checking SwiftFormat..."
+        
+        PROJECT_NAME=$(yq eval '.name' project.yml)
+        
+        if [ -d "$PROJECT_NAME" ]; then
+          # Check if code is properly formatted
+          swiftformat --lint $PROJECT_NAME
+          echo "✓ SwiftFormat check passed"
         else
-          echo "Skipping SwiftFormat - no project.yml found"
+          echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftFormat"
         fi
         
     - name: Build project
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
-        if [ -f "project.yml" ]; then
-          echo "Building project..."
-          
-          PROJECT_NAME=$(yq eval '.name' project.yml)
-          DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
+        echo "Building project..."
+        
+        PROJECT_NAME=$(yq eval '.name' project.yml)
+        DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
           
           # Determine simulator based on deployment target
           if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
@@ -148,20 +185,17 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
             
-          echo "✓ Build completed successfully"
-        else
-          echo "Skipping build - no project.yml found"
-        fi
+        echo "✓ Build completed successfully"
         
     - name: Run unit tests
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
-        if [ -f "project.yml" ]; then
-          PROJECT_NAME=$(yq eval '.name' project.yml)
-          
-          # Check if test target exists
-          HAS_TESTS=$(yq eval ".targets | has(\"${PROJECT_NAME}Tests\")" project.yml)
-          
-          if [ "$HAS_TESTS" = "true" ]; then
+        PROJECT_NAME=$(yq eval '.name' project.yml)
+        
+        # Check if test target exists
+        HAS_TESTS=$(yq eval ".targets | has(\"${PROJECT_NAME}Tests\")" project.yml)
+        
+        if [ "$HAS_TESTS" = "true" ]; then
             echo "Running unit tests..."
             
             DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
@@ -186,23 +220,20 @@ jobs:
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=NO
               
-            echo "✓ Unit tests completed"
-          else
-            echo "⚠ No unit test target found, skipping tests"
-          fi
+          echo "✓ Unit tests completed"
         else
-          echo "Skipping tests - no project.yml found"
+          echo "⚠ No unit test target found, skipping tests"
         fi
         
     - name: Run UI tests
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
-        if [ -f "project.yml" ]; then
-          PROJECT_NAME=$(yq eval '.name' project.yml)
-          
-          # Check if UI test target exists
-          HAS_UI_TESTS=$(yq eval ".targets | has(\"${PROJECT_NAME}UITests\")" project.yml)
-          
-          if [ "$HAS_UI_TESTS" = "true" ]; then
+        PROJECT_NAME=$(yq eval '.name' project.yml)
+        
+        # Check if UI test target exists
+        HAS_UI_TESTS=$(yq eval ".targets | has(\"${PROJECT_NAME}UITests\")" project.yml)
+        
+        if [ "$HAS_UI_TESTS" = "true" ]; then
             echo "Running UI tests..."
             
             DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
@@ -231,15 +262,13 @@ jobs:
                 # Don't fail the build for UI test failures in CI
               }
               
-            echo "✓ UI tests completed"
-          else
-            echo "⚠ No UI test target found, skipping UI tests"
-          fi
+          echo "✓ UI tests completed"
         else
-          echo "Skipping UI tests - no project.yml found"
+          echo "⚠ No UI test target found, skipping UI tests"
         fi
         
     - name: Validate scripts
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
         echo "Validating helper scripts..."
         
@@ -266,6 +295,7 @@ jobs:
         echo "✓ All scripts validated"
         
     - name: Check configuration files
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
         echo "Validating configuration files..."
         
@@ -294,6 +324,7 @@ jobs:
         echo "✓ Configuration files validated"
         
     - name: Summary
+      if: steps.detect.outputs.repo_type == 'generated'
       run: |
         echo "🎉 PR Validation Complete!"
         echo ""
@@ -303,3 +334,11 @@ jobs:
         echo "✅ Configuration validated"
         echo ""
         echo "This PR is ready for review! 🚀"
+        
+    # Template Repository: Cleanup
+    - name: Cleanup test project
+      if: always() && steps.detect.outputs.repo_type == 'template'
+      run: |
+        echo "🧹 Cleaning up test project..."
+        rm -rf ci-test-project
+        echo "✓ Cleanup completed"
