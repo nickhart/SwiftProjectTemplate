@@ -161,7 +161,7 @@ Configure simulators that match your project needs:
 
 ```bash
 # Configure test simulator
-./scripts/simulator.sh --config-tests "iPhone 15 Pro" --os 17.5
+./scripts/simulator.sh --config-tests "iPhone 16 Pro" --os 17.5
 
 # Configure UI test simulator
 ./scripts/simulator.sh --config-ui-tests "iPad Pro 12.9-inch" --force

@@ -99,7 +99,7 @@ get_project_info() {
     log_info "Run './scripts/setup.sh' first to configure the project"
     exit 1
   fi
-  
+
   if [[ "$PROJECT_NAME" == "null" || -z "$PROJECT_NAME" ]]; then
     log_error "Could not determine project name from project.yml"
     exit 1
@@ -112,7 +112,7 @@ determine_destination() {
   else
     local simulator_name=""
     local simulator_arch=""
-    
+
     # Try to get simulator from simulator.yml first
     if [[ -f "simulator.yml" ]] && command_exists yq; then
       simulator_name=$(yq '.simulators.tests.device' simulator.yml 2>/dev/null || echo "")
@@ -124,21 +124,21 @@ determine_destination() {
         simulator_arch=""
       fi
     fi
-    
+
     # Fallback to hardcoded defaults based on deployment target
     if [[ -z "$simulator_name" ]]; then
-      simulator_name="iPhone 15 Pro"
-      
+      simulator_name="iPhone 16 Pro"
+
       if [[ "$DEPLOYMENT_TARGET" != "null" && -n "$DEPLOYMENT_TARGET" ]]; then
         local major_version
         major_version=$(echo "$DEPLOYMENT_TARGET" | cut -d'.' -f1)
-        
+
         if [[ "$major_version" -lt "17" ]]; then
-          simulator_name="iPhone 14 Pro"
+          simulator_name="iPhone 15 Pro"
         fi
       fi
     fi
-    
+
     # Default architecture if not specified
     if [[ -z "$simulator_arch" ]]; then
       # Auto-detect Mac architecture
@@ -148,15 +148,15 @@ determine_destination() {
         simulator_arch="x86_64"
       fi
     fi
-    
+
     # Validate simulator exists and suggest alternatives if not
     if ! validate_simulator_exists "$simulator_name"; then
       log_warning "Simulator '$simulator_name' not found"
-      
+
       # Try to find any available iPhone simulator
       local available_sim
       available_sim=$(find_available_iphone_simulator)
-      
+
       if [[ -n "$available_sim" ]]; then
         log_info "Using available simulator: $available_sim"
         simulator_name="$available_sim"
@@ -167,7 +167,7 @@ determine_destination() {
         exit 1
       fi
     fi
-    
+
     echo "platform=iOS Simulator,arch=$simulator_arch,name=$simulator_name"
   fi
 }
@@ -188,13 +188,13 @@ find_available_iphone_simulator() {
 
 check_project_file() {
   local xcodeproj_path="${PROJECT_NAME}.xcodeproj"
-  
+
   if [[ ! -d "$xcodeproj_path" ]]; then
     log_error "Xcode project not found: $xcodeproj_path"
     log_info "Generate it with: xcodegen"
     exit 1
   fi
-  
+
   # Validate project can be read
   if ! xcodebuild -list -project "$xcodeproj_path" >/dev/null 2>&1; then
     log_error "Xcode project appears to be corrupted: $xcodeproj_path"
@@ -206,12 +206,12 @@ check_project_file() {
 perform_clean_build() {
   if $CLEAN_BUILD; then
     log_info "Cleaning build folder..."
-    
+
     xcodebuild clean \
       -project "${PROJECT_NAME}.xcodeproj" \
       -scheme "$PROJECT_NAME" \
       -configuration "$CONFIGURATION"
-      
+
     log_success "Clean completed"
   fi
 }
@@ -219,17 +219,17 @@ perform_clean_build() {
 build_project() {
   local destination
   destination=$(determine_destination)
-  
+
   local build_type
   if $BUILD_FOR_DEVICE; then
     build_type="device"
   else
     build_type="simulator"
   fi
-  
+
   log_info "Building $PROJECT_NAME for $build_type ($CONFIGURATION configuration)..."
   log_info "Destination: $destination"
-  
+
   # Prepare build arguments
   local build_args=(
     "build"
@@ -238,7 +238,7 @@ build_project() {
     "-destination" "$destination"
     "-configuration" "$CONFIGURATION"
   )
-  
+
   # Add device-specific settings
   if $BUILD_FOR_DEVICE; then
     build_args+=(
@@ -252,7 +252,7 @@ build_project() {
       "CODE_SIGNING_ALLOWED=NO"
     )
   fi
-  
+
   # Add verbose output if requested
   local output_filter=""
   if $VERBOSE; then
@@ -263,11 +263,11 @@ build_project() {
       output_filter="| xcbeautify"
     fi
   fi
-  
+
   # Execute build
   local start_time
   start_time=$(date +%s)
-  
+
   if $VERBOSE; then
     xcodebuild "${build_args[@]}"
   else
@@ -277,17 +277,17 @@ build_project() {
       xcodebuild "${build_args[@]}"
     fi
   fi
-  
+
   local end_time duration
   end_time=$(date +%s)
   duration=$((end_time - start_time))
-  
+
   log_success "Build completed successfully in ${duration}s"
 }
 
 show_build_artifacts() {
   log_info "Build artifacts:"
-  
+
   # Find build products
   local build_dir="build/$CONFIGURATION"
   if $BUILD_FOR_DEVICE; then
@@ -295,12 +295,12 @@ show_build_artifacts() {
   else
     build_dir="${build_dir}-iphonesimulator"
   fi
-  
+
   if [[ -d "$build_dir" ]]; then
     local app_path="${build_dir}/${PROJECT_NAME}.app"
     if [[ -d "$app_path" ]]; then
       echo "  📱 App: $app_path"
-      
+
       # Show app size
       local app_size
       app_size=$(du -sh "$app_path" 2>/dev/null | cut -f1 || echo "unknown")
@@ -314,7 +314,7 @@ show_build_artifacts() {
 display_next_steps() {
   echo
   log_success "🎉 Build completed!"
-  
+
   if $BUILD_FOR_DEVICE; then
     log_info "Device build ready for:"
     echo "  • Archive and distribute"
@@ -326,7 +326,7 @@ display_next_steps() {
     echo "  • Install on simulator"
     echo "  • Testing with './scripts/test.sh'"
   fi
-  
+
   echo
   log_info "Next steps:"
   echo "  • Test: ./scripts/test.sh"
@@ -338,7 +338,7 @@ display_next_steps() {
 main() {
   log_info "Project Build Script"
   echo
-  
+
   parse_arguments "$@"
   check_required_tools xcodebuild
   get_project_info

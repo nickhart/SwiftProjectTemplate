@@ -54,17 +54,17 @@ CONFIG OPTIONS (for config-tests/config-ui-tests):
 EXAMPLES:
   # Basic simulator management
   $0 list --family iPhone --os 18.1
-  $0 create --device "iPhone 15 Pro" --os 18.1 --name "Test Device"
-  $0 boot "iPhone 15 Pro"
+  $0 create --device "iPhone 16 Pro" --os 18.1 --name "Test Device"
+  $0 boot "iPhone 16 Pro"
 
   # ✨ Enhanced configuration features
   $0 config-tests "iPhone 16 Pro Max"        # Auto-configure for tests
   $0 config-ui-tests "iPad Air 11-inch"      # Auto-configure for UI tests
-  $0 optimal-os "iPhone 15 Pro"              # Show optimal OS for device
+  $0 optimal-os "iPhone 16 Pro"              # Show optimal OS for device
   $0 show-config                             # Show current configuration
 
   # Advanced configuration
-  $0 config-tests "iPhone 15 Pro" --os 17.0 --force
+  $0 config-tests "iPhone 16 Pro" --os 17.0 --force
   $0 config-ui-tests "iPad Pro" --arch x86_64
 
 INTELLIGENT FEATURES:
@@ -92,18 +92,18 @@ get_optimal_os_version() {
   local device_name="$1"
   local deployment_target
   deployment_target=$(get_project_deployment_target)
-  
+
   if [[ -n "$deployment_target" ]]; then
     echo "$deployment_target"
     return
   fi
-  
+
   # Fallback: get latest available iOS version for the device
   local latest_ios
   latest_ios=$(xcrun simctl list runtimes --json 2>/dev/null | \
     jq -r '.runtimes[] | select(.name | startswith("iOS")) | .version' | \
     sort -V | tail -1 2>/dev/null || echo "18.1")
-  
+
   echo "$latest_ios"
 }
 
@@ -120,15 +120,15 @@ detect_mac_architecture() {
 validate_device_name() {
   local device_name="$1"
   local available_devices
-  
+
   available_devices=$(xcrun simctl list devicetypes --json 2>/dev/null | \
     jq -r '.devicetypes[].name' 2>/dev/null || echo "")
-  
+
   if [[ -z "$available_devices" ]]; then
     log_warning "Could not fetch available device types"
     return 0  # Allow it to proceed, xcodegen will catch the error
   fi
-  
+
   if echo "$available_devices" | grep -Fxq "$device_name"; then
     return 0
   else
@@ -140,12 +140,12 @@ validate_device_name() {
 show_device_suggestions() {
   local family="$1"
   local devices
-  
+
   log_info "Available $family devices:"
   devices=$(xcrun simctl list devicetypes --json 2>/dev/null | \
     jq -r ".devicetypes[] | select(.productFamily == \"$family\") | .name" 2>/dev/null | \
     head -10 || echo "")
-  
+
   if [[ -n "$devices" ]]; then
     echo "$devices" | sed 's/^/  • /'
   else
@@ -160,9 +160,9 @@ update_simulator_config() {
   local os_version="$3"
   local architecture="$4"
   local force_update="$5"
-  
+
   local simulator_yml="$ROOT_DIR/simulator.yml"
-  
+
   # Create simulator.yml if it doesn't exist
   if [[ ! -f "$simulator_yml" ]]; then
     log_info "Creating simulator.yml configuration file..."
@@ -171,42 +171,42 @@ update_simulator_config() {
 # This file is managed by scripts/simulator.sh
 simulators:
   tests:
-    device: "iPhone 15 Pro"
+    device: "iPhone 16 Pro"
     os: "18.0"
     arch: "arm64"
   ui-tests:
-    device: "iPhone 15 Pro"
+    device: "iPhone 16 Pro"
     os: "18.0"
     arch: "arm64"
 EOF
   fi
-  
+
   # Check if yq is available
   if ! command_exists yq; then
     log_error "yq is required for configuration management"
     log_info "Install with: brew install yq"
     exit 1
   fi
-  
+
   # Validate current config exists
   if ! yq eval ".simulators.$config_type" "$simulator_yml" >/dev/null 2>&1; then
     log_error "Invalid simulator.yml structure"
     log_info "Expected structure: simulators.${config_type}.device, .os, .arch"
     exit 1
   fi
-  
+
   # Get current configuration
   local current_device current_os current_arch
   current_device=$(yq eval ".simulators.$config_type.device" "$simulator_yml" 2>/dev/null || echo "")
   current_os=$(yq eval ".simulators.$config_type.os" "$simulator_yml" 2>/dev/null || echo "")
   current_arch=$(yq eval ".simulators.$config_type.arch" "$simulator_yml" 2>/dev/null || echo "")
-  
+
   # Check if update is needed
   if [[ "$current_device" == "$device_name" && "$current_os" == "$os_version" && "$current_arch" == "$architecture" ]]; then
     log_success "Configuration already up to date for $config_type"
     return
   fi
-  
+
   # Prompt for confirmation unless force is specified
   if [[ "$force_update" != "true" ]]; then
     echo
@@ -220,76 +220,76 @@ EOF
     echo "  OS: $os_version"
     echo "  Architecture: $architecture"
     echo
-    
+
     while true; do
       read -p "Update $config_type configuration? (y/N): " yn
       case $yn in
         [Yy]* ) break;;
-        [Nn]* | "" ) 
+        [Nn]* | "" )
           log_info "Configuration update cancelled"
           return;;
         * ) echo "Please answer yes or no.";;
       esac
     done
   fi
-  
+
   # Update configuration
   log_info "Updating $config_type configuration..."
   yq eval ".simulators.$config_type.device = \"$device_name\"" -i "$simulator_yml"
   yq eval ".simulators.$config_type.os = \"$os_version\"" -i "$simulator_yml"
   yq eval ".simulators.$config_type.arch = \"$architecture\"" -i "$simulator_yml"
-  
+
   log_success "Updated $config_type configuration in simulator.yml"
 }
 
 # Show current simulator configuration
 show_current_config() {
   local simulator_yml="$ROOT_DIR/simulator.yml"
-  
+
   if [[ ! -f "$simulator_yml" ]]; then
     log_warning "simulator.yml not found"
     log_info "Run './scripts/simulator.sh config-tests <device>' to create configuration"
     return
   fi
-  
+
   if ! command_exists yq; then
     log_error "yq is required to read configuration"
     log_info "Install with: brew install yq"
     exit 1
   fi
-  
+
   echo "Current Simulator Configuration:"
   echo "================================"
-  
+
   # Check if configuration exists
   if ! yq eval '.simulators' "$simulator_yml" >/dev/null 2>&1; then
     log_error "Invalid simulator.yml format"
     return
   fi
-  
+
   # Show tests configuration
   local tests_device tests_os tests_arch
   tests_device=$(yq eval '.simulators.tests.device' "$simulator_yml" 2>/dev/null || echo "not configured")
   tests_os=$(yq eval '.simulators.tests.os' "$simulator_yml" 2>/dev/null || echo "not configured")
   tests_arch=$(yq eval '.simulators.tests.arch' "$simulator_yml" 2>/dev/null || echo "not configured")
-  
+
   echo "Tests:"
   echo "  Device: $tests_device"
   echo "  OS: $tests_os"
   echo "  Architecture: $tests_arch"
-  
+
   # Show UI tests configuration
   local ui_tests_device ui_tests_os ui_tests_arch
   ui_tests_device=$(yq eval '.simulators.ui-tests.device' "$simulator_yml" 2>/dev/null || echo "not configured")
   ui_tests_os=$(yq eval '.simulators.ui-tests.os' "$simulator_yml" 2>/dev/null || echo "not configured")
   ui_tests_arch=$(yq eval '.simulators.ui-tests.arch' "$simulator_yml" 2>/dev/null || echo "not configured")
-  
+
   echo
   echo "UI Tests:"
   echo "  Device: $ui_tests_device"
   echo "  OS: $ui_tests_os"
   echo "  Architecture: $ui_tests_arch"
-  
+
   # Show project deployment target if available
   local deployment_target
   deployment_target=$(get_project_deployment_target)
@@ -305,13 +305,13 @@ config_tests() {
   local os_override="${2:-}"
   local arch_override="${3:-}"
   local force_update="${4:-false}"
-  
+
   log_info "Configuring simulator for unit tests..."
-  
+
   # Validate device name
   if ! validate_device_name "$device_name"; then
     log_error "Device '$device_name' not found in available device types"
-    
+
     # Determine device family for suggestions
     local family=""
     if [[ "$device_name" == *"iPhone"* ]]; then
@@ -326,11 +326,11 @@ config_tests() {
         log_warning "Could not fetch device list"
       exit 1
     fi
-    
+
     show_device_suggestions "$family"
     exit 1
   fi
-  
+
   # Determine OS version
   local os_version
   if [[ -n "$os_override" ]]; then
@@ -338,7 +338,7 @@ config_tests() {
   else
     os_version=$(get_optimal_os_version "$device_name")
   fi
-  
+
   # Determine architecture
   local architecture
   if [[ -n "$arch_override" ]]; then
@@ -346,29 +346,29 @@ config_tests() {
   else
     architecture=$(detect_mac_architecture)
   fi
-  
+
   log_info "Configuration details:"
   echo "  Device: $device_name"
   echo "  OS: iOS $os_version"
   echo "  Architecture: $architecture"
   echo
-  
+
   update_simulator_config "tests" "$device_name" "$os_version" "$architecture" "$force_update"
 }
 
-# Configure simulators for UI tests  
+# Configure simulators for UI tests
 config_ui_tests() {
   local device_name="$1"
   local os_override="${2:-}"
   local arch_override="${3:-}"
   local force_update="${4:-false}"
-  
+
   log_info "Configuring simulator for UI tests..."
-  
+
   # Validate device name
   if ! validate_device_name "$device_name"; then
     log_error "Device '$device_name' not found in available device types"
-    
+
     # Show suggestions
     local family=""
     if [[ "$device_name" == *"iPhone"* ]]; then
@@ -382,11 +382,11 @@ config_ui_tests() {
         log_warning "Could not fetch device list"
       exit 1
     fi
-    
+
     show_device_suggestions "$family"
     exit 1
   fi
-  
+
   # Determine OS version
   local os_version
   if [[ -n "$os_override" ]]; then
@@ -394,7 +394,7 @@ config_ui_tests() {
   else
     os_version=$(get_optimal_os_version "$device_name")
   fi
-  
+
   # Determine architecture
   local architecture
   if [[ -n "$arch_override" ]]; then
@@ -402,20 +402,20 @@ config_ui_tests() {
   else
     architecture=$(detect_mac_architecture)
   fi
-  
+
   log_info "Configuration details:"
   echo "  Device: $device_name"
   echo "  OS: iOS $os_version"
   echo "  Architecture: $architecture"
   echo
-  
+
   update_simulator_config "ui-tests" "$device_name" "$os_version" "$architecture" "$force_update"
 }
 
 # Show optimal OS version for a device
 show_optimal_os() {
   local device_name="${1:-}"
-  
+
   if [[ -z "$device_name" ]]; then
     # Show optimal OS for project
     local deployment_target
@@ -543,7 +543,7 @@ create_simulator() {
 
   if [[ -z "$device_type" || -z "$os_version" || -z "$sim_name" ]]; then
     echo "Error: --device, --os, and --name are required for create command" >&2
-    echo "Example: $0 create --device \"iPhone 15 Pro\" --os 18.1 --name \"My Test Device\""
+    echo "Example: $0 create --device \"iPhone 16 Pro\" --os 18.1 --name \"My Test Device\""
     exit 1
   fi
 
@@ -708,14 +708,14 @@ case "$1" in
       echo "Usage: $0 config-tests <device_name> [--os <version>] [--arch <arch>] [--force]" >&2
       exit 1
     fi
-    
+
     device_name="$2"
     shift 2
-    
+
     os_override=""
     arch_override=""
     force_update="false"
-    
+
     while [[ $# -gt 0 ]]; do
       case $1 in
         --os)
@@ -736,7 +736,7 @@ case "$1" in
           ;;
       esac
     done
-    
+
     config_tests "$device_name" "$os_override" "$arch_override" "$force_update"
     ;;
   config-ui-tests)
@@ -744,14 +744,14 @@ case "$1" in
       echo "Usage: $0 config-ui-tests <device_name> [--os <version>] [--arch <arch>] [--force]" >&2
       exit 1
     fi
-    
+
     device_name="$2"
     shift 2
-    
+
     os_override=""
     arch_override=""
     force_update="false"
-    
+
     while [[ $# -gt 0 ]]; do
       case $1 in
         --os)
@@ -772,7 +772,7 @@ case "$1" in
           ;;
       esac
     done
-    
+
     config_ui_tests "$device_name" "$os_override" "$arch_override" "$force_update"
     ;;
   show-config)

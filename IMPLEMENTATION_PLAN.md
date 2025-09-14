@@ -125,7 +125,7 @@ ProjectNameUITests/
 ```bash
 # Current functionality (preserved)
 ./scripts/simulator.sh list --family iPhone --os 18.1
-./scripts/simulator.sh create --device "iPhone 15 Pro" --os 18.1 --name "Test Device"
+./scripts/simulator.sh create --device "iPhone 16 Pro" --os 18.1 --name "Test Device"
 
 # ✨ New configuration features
 ./scripts/simulator.sh --config-tests "iPhone 16 Pro Max"     # Auto-configure for tests

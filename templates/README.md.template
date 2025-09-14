@@ -99,7 +99,7 @@ Run any script with `--help` to see available options.
 
 ### XcodeGen
 
-This project uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project file from `project.yml`. 
+This project uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project file from `project.yml`.
 
 To regenerate the project file:
 ```bash
@@ -112,9 +112,9 @@ Simulator configuration is managed in `simulator.yml`. To update simulator setti
 
 ```bash
 # Configure test simulators
-./scripts/simulator.sh --config-tests "iPhone 15 Pro Max"
+./scripts/simulator.sh --config-tests "iPhone 16 Pro Max"
 
-# Configure UI test simulators  
+# Configure UI test simulators
 ./scripts/simulator.sh --config-ui-tests "iPad Air 11-inch"
 ```
 

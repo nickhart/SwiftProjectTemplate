@@ -192,12 +192,12 @@ jobs:
             if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
               MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
               if [ "$MAJOR_VERSION" -ge "17" ]; then
-                SIMULATOR_NAME="iPhone 15 Pro"
+                SIMULATOR_NAME="iPhone 16 Pro"
               else
-                SIMULATOR_NAME="iPhone 14 Pro"
+                SIMULATOR_NAME="iPhone 15 Pro"
               fi
             else
-              SIMULATOR_NAME="iPhone 15 Pro"
+              SIMULATOR_NAME="iPhone 16 Pro"
             fi
 
             echo "Building for $SIMULATOR_NAME..."
@@ -228,12 +228,12 @@ jobs:
               if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
                 MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
                 if [ "$MAJOR_VERSION" -ge "17" ]; then
-                  SIMULATOR_NAME="iPhone 15 Pro"
+                  SIMULATOR_NAME="iPhone 16 Pro"
                 else
-                  SIMULATOR_NAME="iPhone 14 Pro"
+                  SIMULATOR_NAME="iPhone 15 Pro"
                 fi
               else
-                SIMULATOR_NAME="iPhone 15 Pro"
+                SIMULATOR_NAME="iPhone 16 Pro"
               fi
 
               xcodebuild test \
@@ -266,12 +266,12 @@ jobs:
               if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
                 MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
                 if [ "$MAJOR_VERSION" -ge "17" ]; then
-                  SIMULATOR_NAME="iPhone 15 Pro"
+                  SIMULATOR_NAME="iPhone 16 Pro"
                 else
-                  SIMULATOR_NAME="iPhone 14 Pro"
+                  SIMULATOR_NAME="iPhone 15 Pro"
                 fi
               else
-                SIMULATOR_NAME="iPhone 15 Pro"
+                SIMULATOR_NAME="iPhone 16 Pro"
               fi
 
               # UI tests often need more time and resources
