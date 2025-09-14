@@ -8,13 +8,13 @@ A comprehensive iOS project template repository that includes all common infrast
 
 ## Features
 
-🚀 **Zero Setup Time**: Clone and run `./scripts/setup.sh` to get a fully configured iOS project
-⚙️ **Smart Configuration**: Uses `yq` to extract project info and auto-configure simulators
-🎨 **Code Quality**: Integrated SwiftLint, SwiftFormat, and pre-commit hooks
-🏗️ **XcodeGen Integration**: Project files generated from `project.yml` configuration
-🤖 **CI/CD Ready**: GitHub Actions workflow for automated testing and validation
-📱 **Simulator Management**: Advanced simulator configuration with auto-detection
-🔧 **Developer Tools**: Comprehensive script ecosystem for building, testing, and deployment
+🚀 **Zero Setup Time**: Clone and run `./scripts/setup.sh` to get a fully configured iOS project\
+⚙️ **Smart Configuration**: Uses `yq` to extract project info and auto-configure simulators\
+🎨 **Code Quality**: Integrated SwiftLint, SwiftFormat, and pre-commit hooks\
+🏗️ **XcodeGen Integration**: Project files generated from `project.yml` configuration\
+🤖 **CI/CD Ready**: GitHub Actions workflow for automated testing and validation\
+📱 **Simulator Management**: Advanced simulator configuration with auto-detection\
+🔧 **Developer Tools**: Comprehensive script ecosystem for building, testing, and deployment\
 
 ## Quick Start
 
