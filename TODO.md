@@ -48,6 +48,8 @@
 - [ ] **Template validation**: Add comprehensive template validation
 - [ ] **Custom templates**: Support for user-defined template variables
 - [ ] **Template inheritance**: Allow extending base templates
+- [ ] **Clean templates**: remove remaining templates once the project is generated
+- [ ] **Improve dev-sync script**: don't copy templates and TODO.md
 
 ### Advanced Code Generation
 - [ ] **Model/View/ViewModel Generator**: Interactive tool to create skeleton Swift files

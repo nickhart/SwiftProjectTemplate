@@ -122,6 +122,7 @@ MyAwesomeApp/
 
 ### 🔧 Configuration Files
 
+- **`.gitignore`** - Pre-configured to work well for iOS/macOS development w/Xcodegen
 - **`.swiftlint.yml`** - Comprehensive linting rules for iOS development
 - **`.swiftformat`** - Consistent code formatting configuration
 - **`project.yml`** - XcodeGen project definition (no more .pbxproj conflicts!)
@@ -147,12 +148,16 @@ The setup script supports both interactive and CLI modes:
 
 Options:
   --project-name <name>         Project name (e.g., "FooApp")
+  --bundle-id-root              bundle id root for your project (eg: "com.yourname")
   --deployment-target <version> iOS deployment target (default: 18.0)
   --swift-version <version>     Swift version (default: 5.10)
-  --public                     Public project (includes LICENSE in README)
-  --private                    Private project (default)
-  --force                      Overwrite existing files
-  --help                       Show help
+  --test-framework              swift-testing or XCTest (default: swift-testing)
+  --public                      Public project (includes **MIT** LICENSE in README)
+  --private                     Private project (default)
+  --no-git-hooks                Don't install Git pre-commit hook
+  --skip-brew                   Don't install Brewfile dependencies
+  --force                       Overwrite existing files
+  --help                        Show help
 ```
 
 ### Simulator Configuration
@@ -161,10 +166,10 @@ Configure simulators that match your project needs:
 
 ```bash
 # Configure test simulator
-./scripts/simulator.sh --config-tests "iPhone 16 Pro" --os 17.5
+./scripts/simulator.sh config-tests "iPhone 16 Pro" --os 17.5
 
 # Configure UI test simulator
-./scripts/simulator.sh --config-ui-tests "iPad Pro 12.9-inch" --force
+./scripts/simulator.sh config-ui-tests "iPad Pro 12.9-inch" --force
 
 # Show current configuration
 ./scripts/simulator.sh show-config
@@ -238,11 +243,18 @@ See [TODO.md](TODO.md) for planned enhancements including:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Release History
+
+- **0.1**: initial release
+  - Validated by creating a simple iOS app targeting iOS 18 and using Swift Testing.
+  - **Release Notes**: manually remove `./tempates` and `TODO.md` from generated project.
+
 ## Acknowledgments
 
 - Inspired by the need for consistent iOS project setup
 - Built with modern iOS development best practices
 - Designed for teams and individual developers alike
+- Developed with the assistance of [Claude Code](https://www.anthropic.com/claude-code)
 
 ---
 
