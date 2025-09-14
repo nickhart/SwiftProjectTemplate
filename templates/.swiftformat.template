@@ -22,7 +22,6 @@
 --fractiongrouping               disabled
 --fragment                       false
 --funcattributes                 prev-line
---groupedimports                 alphabetized
 --guardelse                      same-line
 --hexgrouping                    4,8
 --hexliteralcase                 uppercase
