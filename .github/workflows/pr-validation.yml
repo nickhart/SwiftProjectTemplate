@@ -67,11 +67,11 @@ jobs:
         mkdir -p ci-test-project
         cd ci-test-project
         ${GITHUB_WORKSPACE}/scripts/setup.sh \
-          --name "CITestApp" \
+          --project-name "CITestApp" \
           --bundle-id-root "com.ci.test" \
-          --test-framework "SwiftTesting" \
-          --git-hooks "no" \
-          --non-interactive
+          --test-framework "swift-testing" \
+          --no-git-hooks \
+          --force
         
         echo "✓ Test project generated successfully"
         
