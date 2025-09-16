@@ -2,6 +2,7 @@
 
 A comprehensive iOS project template repository that includes all common infrastructure, tooling, and automation needed for professional Swift iOS development. This template eliminates the need to recreate boilerplate configuration for every new iOS project.
 
+[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](https://github.com/nickhart/SwiftProjectTemplate/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Swift 5.10](https://img.shields.io/badge/Swift-5.10-orange.svg)](https://swift.org)
 [![iOS 18.0+](https://img.shields.io/badge/iOS-18.0%2B-blue.svg)](https://developer.apple.com/ios/)
