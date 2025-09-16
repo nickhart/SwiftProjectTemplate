@@ -106,6 +106,15 @@
 
 ---
 
+## New Features
+
+- [ ] Easier integration of Xcode-generated projects (separate folder hierarchy generation)
+- [ ] Add macOS target support
+- [ ] Quick Model, View, and ViewModel generation script
+- [ ] Option to add CoreData support w/standard PersistenceController
+
+---
+
 ## Technical Debt
 
 ### Code Quality
