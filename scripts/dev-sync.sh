@@ -94,7 +94,7 @@ parse_arguments() {
 }
 
 check_template_repo_root() {
-  if [[ ! -f "scripts/setup.sh" || ! -f "IMPLEMENTATION_PLAN.md" || ! -d "templates" ]]; then
+  if [[ ! -f "scripts/setup.sh" || ! -f "VERSION" || ! -d "templates" ]]; then
     log_error "This script must be run from the SwiftProjectTemplate root directory"
     exit 1
   fi
@@ -142,7 +142,7 @@ sync_to_project() {
   done
   
   # Sync individual files
-  for file in Brewfile .swift-version .markdownlint.json TODO.md IMPLEMENTATION_PLAN.md; do
+  for file in Brewfile .swift-version .markdownlint.json; do
     if [[ -f "$file" ]]; then
       "${rsync_cmd[@]}" "$file" "$TARGET_PROJECT/"
     fi
@@ -165,7 +165,7 @@ sync_from_project() {
   done
   
   # Sync individual files (reverse direction)
-  for file in Brewfile .swift-version .markdownlint.json TODO.md IMPLEMENTATION_PLAN.md; do
+  for file in Brewfile .swift-version .markdownlint.json; do
     if [[ -f "$TARGET_PROJECT/$file" ]]; then
       "${rsync_cmd[@]}" "$TARGET_PROJECT/$file" ./
     fi
@@ -178,7 +178,7 @@ show_diff() {
   log_info "Showing differences between template and project: $TARGET_PROJECT"
   
   # Use rsync --dry-run to show what would be copied
-  rsync -avcn --delete scripts/ templates/ .github/ .vscode/ Brewfile .swift-version .markdownlint.json TODO.md IMPLEMENTATION_PLAN.md "$TARGET_PROJECT/" 2>/dev/null || {
+  rsync -avcn --delete scripts/ templates/ .github/ .vscode/ Brewfile .swift-version .markdownlint.json "$TARGET_PROJECT/" 2>/dev/null || {
     log_info "Run with 'to' mode to see what files would be synced"
   }
 }
