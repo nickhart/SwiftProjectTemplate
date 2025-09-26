@@ -1152,6 +1152,31 @@ Generated iOS project using SwiftProjectTemplate with:
   fi
 }
 
+cleanup_template_files() {
+  log_info "Cleaning up template-specific files..."
+
+  # Remove template-validation.yml workflow since this is now a generated project
+  local template_validation_workflow=".github/workflows/template-validation.yml"
+  if [[ -f "$template_validation_workflow" ]]; then
+    rm "$template_validation_workflow"
+    log_success "Removed template-validation.yml (not needed for generated projects)"
+  fi
+
+  # Remove empty .github/workflows directory if it has no other workflows
+  local workflows_dir=".github/workflows"
+  if [[ -d "$workflows_dir" && -z "$(ls -A "$workflows_dir" 2>/dev/null)" ]]; then
+    rmdir "$workflows_dir"
+    log_info "Removed empty workflows directory"
+  fi
+
+  # Remove empty .github directory if it has no other content
+  local github_dir=".github"
+  if [[ -d "$github_dir" && -z "$(ls -A "$github_dir" 2>/dev/null)" ]]; then
+    rmdir "$github_dir"
+    log_info "Removed empty .github directory"
+  fi
+}
+
 display_next_steps() {
   log_success "🎉 Project setup complete!"
   echo
@@ -1211,6 +1236,7 @@ main() {
   verify_or_create_git_repository
   setup_git_hooks
   create_initial_commit
+  cleanup_template_files
 
   display_next_steps
 }
