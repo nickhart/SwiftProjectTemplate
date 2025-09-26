@@ -1,0 +1,217 @@
+name: iOS CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  ios-ci:
+    name: Build, Test & Quality Checks
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.4"
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew
+          key: ${{ runner.os }}-homebrew-${{ hashFiles('**/Brewfile') }}
+          restore-keys: |
+            ${{ runner.os }}-homebrew-
+
+      - name: Install dependencies
+        run: |
+          # Install Homebrew dependencies
+          brew bundle install --file=./Brewfile
+
+          # Verify installations
+          echo "Installed versions:"
+          swiftlint --version
+          swiftformat --version
+          xcodegen --version
+          yq --version
+
+      - name: Generate Xcode project
+        run: |
+          echo "Generating Xcode project..."
+          xcodegen generate
+
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          if [ -d "${PROJECT_NAME}.xcodeproj" ]; then
+            echo "✓ Xcode project generated successfully"
+          else
+            echo "✗ Failed to generate Xcode project"
+            exit 1
+          fi
+
+      - name: SwiftFormat check
+        run: |
+          echo "Checking code formatting..."
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+
+          if [ -d "$PROJECT_NAME" ]; then
+            swiftformat --lint $PROJECT_NAME
+            echo "✓ SwiftFormat check passed"
+          else
+            echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftFormat"
+          fi
+
+      - name: SwiftLint
+        run: |
+          echo "Running SwiftLint..."
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+
+          if [ -d "$PROJECT_NAME" ]; then
+            swiftlint lint --strict
+            echo "✓ SwiftLint passed"
+          else
+            echo "⚠ Source directory $PROJECT_NAME not found, skipping SwiftLint"
+          fi
+
+      - name: Build project
+        run: |
+          echo "Building project..."
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
+
+          # Determine simulator based on deployment target
+          if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
+            MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
+            if [ "$MAJOR_VERSION" -ge "17" ]; then
+              SIMULATOR_NAME="iPhone 16 Pro"
+            else
+              SIMULATOR_NAME="iPhone 15 Pro"
+            fi
+          else
+            SIMULATOR_NAME="iPhone 16 Pro"
+          fi
+
+          echo "Building for $SIMULATOR_NAME..."
+
+          xcodebuild build \
+            -project "${PROJECT_NAME}.xcodeproj" \
+            -scheme "$PROJECT_NAME" \
+            -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
+            -configuration Debug \
+            ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+          echo "✓ Build completed successfully"
+
+      - name: Run unit tests
+        run: |
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+
+          # Check if test target exists
+          HAS_TESTS=$(yq eval ".targets | has(\"${PROJECT_NAME}Tests\")" project.yml)
+
+          if [ "$HAS_TESTS" = "true" ]; then
+            echo "Running unit tests..."
+
+            DEPLOYMENT_TARGET=$(yq eval '.options.deploymentTarget.iOS' project.yml)
+            if [ "$DEPLOYMENT_TARGET" != "null" ] && [ -n "$DEPLOYMENT_TARGET" ]; then
+              MAJOR_VERSION=$(echo $DEPLOYMENT_TARGET | cut -d'.' -f1)
+              if [ "$MAJOR_VERSION" -ge "17" ]; then
+                SIMULATOR_NAME="iPhone 16 Pro"
+              else
+                SIMULATOR_NAME="iPhone 15 Pro"
+              fi
+            else
+              SIMULATOR_NAME="iPhone 16 Pro"
+            fi
+
+            xcodebuild test \
+              -project "${PROJECT_NAME}.xcodeproj" \
+              -scheme "$PROJECT_NAME" \
+              -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
+              -configuration Debug \
+              -enableCodeCoverage YES \
+              ONLY_ACTIVE_ARCH=YES \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+
+            echo "✓ Unit tests completed"
+          else
+            echo "⚠ No unit test target found, skipping tests"
+          fi
+
+      - name: Validate scripts
+        run: |
+          echo "Validating helper scripts..."
+
+          # Check that all scripts are executable
+          find scripts -name "*.sh" -type f | while read script; do
+            if [ -x "$script" ]; then
+              echo "✓ $script is executable"
+            else
+              echo "✗ $script is not executable"
+              exit 1
+            fi
+          done
+
+          # Check script syntax
+          find scripts -name "*.sh" -type f | while read script; do
+            if bash -n "$script"; then
+              echo "✓ $script syntax is valid"
+            else
+              echo "✗ $script has syntax errors"
+              exit 1
+            fi
+          done
+
+          echo "✓ All scripts validated"
+
+      - name: Check configuration files
+        run: |
+          echo "Validating configuration files..."
+
+          # Check .swiftlint.yml if it exists
+          if [ -f ".swiftlint.yml" ]; then
+            yq eval '.' .swiftlint.yml > /dev/null
+            echo "✓ .swiftlint.yml is valid"
+          fi
+
+          # Check .swiftformat if it exists
+          if [ -f ".swiftformat" ]; then
+            echo "✓ .swiftformat found"
+          fi
+
+          # Check simulator.yml if it exists
+          if [ -f "simulator.yml" ]; then
+            yq eval '.' simulator.yml > /dev/null
+            echo "✓ simulator.yml is valid"
+          fi
+
+          # Check Brewfile
+          if [ -f "Brewfile" ]; then
+            echo "✓ Brewfile found"
+          fi
+
+          echo "✓ Configuration files validated"
+
+      - name: CI Summary
+        run: |
+          echo "🎉 CI Complete!"
+          echo ""
+          echo "✅ Code formatting validated"
+          echo "✅ Code quality checks passed"
+          echo "✅ Build completed successfully"
+          echo "✅ Tests executed"
+          echo "✅ Configuration validated"
+          echo ""
+          echo "Ready for review! 🚀"

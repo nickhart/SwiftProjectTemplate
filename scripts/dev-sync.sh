@@ -39,7 +39,7 @@ EXAMPLES:
   $0 diff ../MyTestApp
 
 SYNCABLE ITEMS:
-  • scripts/, templates/, .github/, .vscode/
+  • scripts/, templates/, .github/ (excluding template-validation.yml), .vscode/
   • Brewfile, .swift-version, .markdownlint.json
 
 EOF
@@ -134,11 +134,17 @@ sync_to_project() {
   read -ra rsync_cmd <<< "$(build_rsync_cmd)"
 
   # Sync directories
-  for dir in scripts templates .github .vscode; do
+  for dir in scripts templates .vscode; do
     if [[ -d "$dir" ]]; then
       "${rsync_cmd[@]}" "$dir/" "$TARGET_PROJECT/$dir/"
     fi
   done
+
+  # Sync .github directory but exclude template-specific workflows
+  if [[ -d ".github" ]]; then
+    # Only sync non-template workflows and other .github files
+    "${rsync_cmd[@]}" --exclude="workflows/template-validation.yml" .github/ "$TARGET_PROJECT/.github/"
+  fi
 
   # Sync individual files
   for file in Brewfile .gitignore .swift-version .markdownlint.json; do
@@ -157,11 +163,17 @@ sync_from_project() {
   read -ra rsync_cmd <<< "$(build_rsync_cmd)"
 
   # Sync directories (reverse direction)
-  for dir in scripts templates .github .vscode; do
+  for dir in scripts templates .vscode; do
     if [[ -d "$TARGET_PROJECT/$dir" ]]; then
       "${rsync_cmd[@]}" "$TARGET_PROJECT/$dir/" "$dir/"
     fi
   done
+
+  # Sync .github directory but exclude template-specific workflows (reverse direction)
+  if [[ -d "$TARGET_PROJECT/.github" ]]; then
+    # Only sync back non-template workflows and other .github files
+    "${rsync_cmd[@]}" --exclude="workflows/template-validation.yml" "$TARGET_PROJECT/.github/" .github/
+  fi
 
   # Sync individual files (reverse direction)
   for file in Brewfile .gitignore .swift-version .markdownlint.json; do
@@ -177,7 +189,7 @@ show_diff() {
   log_info "Showing differences between template and project: $TARGET_PROJECT"
 
   # Use rsync --dry-run to show what would be copied
-  rsync -avcn --delete scripts/ templates/ .github/ .vscode/ Brewfile .swift-version .markdownlint.json "$TARGET_PROJECT/" 2>/dev/null || {
+  rsync -avcn --delete --exclude="workflows/template-validation.yml" scripts/ templates/ .github/ .vscode/ Brewfile .swift-version .markdownlint.json "$TARGET_PROJECT/" 2>/dev/null || {
     log_info "Run with 'to' mode to see what files would be synced"
   }
 }

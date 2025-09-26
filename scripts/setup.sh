@@ -12,8 +12,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/_helpers.sh"
 
 # Default values
 PROJECT_NAME=""
-DEPLOYMENT_TARGET="26.0"
-SWIFT_VERSION="6.2"
+DEPLOYMENT_TARGET="18.0"
+SWIFT_VERSION="5.10"
 PROJECT_TYPE="private"  # private or public
 BUNDLE_ID_ROOT="com.yourcompany"
 TEST_FRAMEWORK="swift-testing"  # swift-testing or xctest
@@ -314,7 +314,7 @@ prompt_for_missing_info() {
       DEPLOYMENT_TARGET="$input_deployment_target"
       if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
         log_error "Invalid deployment target format. Using default: $DEPLOYMENT_TARGET"
-        DEPLOYMENT_TARGET="26.0"
+        DEPLOYMENT_TARGET="18.0"
       fi
     fi
   fi
@@ -327,7 +327,7 @@ prompt_for_missing_info() {
       SWIFT_VERSION="$input_swift_version"
       if ! validate_swift_version "$SWIFT_VERSION"; then
         log_error "Invalid Swift version format. Using default: $SWIFT_VERSION"
-        SWIFT_VERSION="6.2"
+        SWIFT_VERSION="5.10"
       fi
     fi
   fi
@@ -493,6 +493,7 @@ generate_template_files() {
     ".swiftlint.yml.template:.swiftlint.yml"
     ".swiftformat.template:.swiftformat"
     "README.md.template:README.md"
+    "ci.yml.template:.github/workflows/ci.yml"
   )
 
   for file_mapping in "${files_to_generate[@]}"; do
@@ -531,6 +532,14 @@ generate_template_files() {
 
     # Generate file from template
     if [[ -f "$template_path" ]]; then
+      # Create output directory if needed
+      local output_dir
+      output_dir=$(dirname "$output_path")
+      if [[ ! -d "$output_dir" ]]; then
+        mkdir -p "$output_dir"
+        log_info "Created directory: $output_dir"
+      fi
+
       replace_template_vars "$template_path" "$output_path" "${template_vars[@]}"
       log_success "Generated $output_file"
     else
