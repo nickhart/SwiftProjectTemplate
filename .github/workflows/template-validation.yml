@@ -79,6 +79,7 @@ jobs:
             --deployment-target 18.0 \
             --swift-version 5.10 \
             --test-framework "swift-testing" \
+            --source-language en \
             --no-git-hooks \
             --no-commit \
             --public \
