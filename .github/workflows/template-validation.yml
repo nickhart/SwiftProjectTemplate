@@ -65,8 +65,8 @@ jobs:
           ./scripts/setup.sh \
             --project-name "CITestApp" \
             --bundle-id-root "com.ci.test" \
-            --deployment-target 18.0 \
-            --swift-version 5.10 \
+            --deployment-target 26.0 \
+            --swift-version 6.2 \
             --test-framework "swift-testing" \
             --no-git-hooks \
             --no-commit \
