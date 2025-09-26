@@ -61,8 +61,19 @@ jobs:
           set -x  # Enable verbose output
           cd ci-test-project
 
-          # Run setup script from template root, but in the ci-test-project context
-          ./scripts/setup.sh \
+          echo "🔍 Debugging setup script execution..."
+          echo "Current directory: $(pwd)"
+          echo "Setup script location: $(ls -la scripts/setup.sh)"
+          echo "Setup script is executable: $(test -x scripts/setup.sh && echo 'YES' || echo 'NO')"
+
+          # Check if all required tools are available
+          echo "🔧 Checking tool availability..."
+          which bash || echo "bash not found"
+          bash --version || echo "bash version check failed"
+
+          # Run setup script with bash debugging and verbose output
+          echo "🚀 Running setup script with full debugging..."
+          bash -x ./scripts/setup.sh \
             --project-name "CITestApp" \
             --bundle-id-root "com.ci.test" \
             --deployment-target 18.0 \
@@ -72,12 +83,17 @@ jobs:
             --no-commit \
             --public \
             --skip-brew \
-            --force || {
-              echo "Setup script failed with exit code $?"
-              echo "Contents of current directory:"
+            --force 2>&1 || {
+              echo "❌ Setup script failed with exit code $?"
+              echo ""
+              echo "📁 Contents of current directory:"
               ls -la
-              echo "Contents of parent directory:"
+              echo ""
+              echo "📁 Contents of parent directory:"
               ls -la ..
+              echo ""
+              echo "📝 Setup script contents (first 50 lines):"
+              head -50 scripts/setup.sh
               exit 1
             }
           set +x  # Disable verbose output
