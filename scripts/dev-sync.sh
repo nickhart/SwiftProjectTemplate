@@ -41,7 +41,6 @@ EXAMPLES:
 SYNCABLE ITEMS:
   • scripts/, templates/, .github/, .vscode/
   • Brewfile, .swift-version, .markdownlint.json
-  • TODO.md, IMPLEMENTATION_PLAN.md
 
 EOF
 }
@@ -112,71 +111,71 @@ validate_target_project() {
 # Build rsync command with common options
 build_rsync_cmd() {
   local rsync_cmd=("rsync")
-  
+
   # Always use these options
   rsync_cmd+=("-av")  # archive + verbose
-  
+
   # Conditional options
   if $DRY_RUN; then
     rsync_cmd+=("--dry-run")
   fi
-  
+
   if ! $FORCE_SYNC; then
     rsync_cmd+=("-u")  # update (skip newer files)
   fi
-  
+
   echo "${rsync_cmd[@]}"
 }
 
 sync_to_project() {
   log_info "Syncing template changes TO project: $TARGET_PROJECT"
-  
+
   local rsync_cmd
   read -ra rsync_cmd <<< "$(build_rsync_cmd)"
-  
+
   # Sync directories
   for dir in scripts templates .github .vscode; do
     if [[ -d "$dir" ]]; then
       "${rsync_cmd[@]}" "$dir/" "$TARGET_PROJECT/$dir/"
     fi
   done
-  
+
   # Sync individual files
   for file in Brewfile .swift-version .markdownlint.json; do
     if [[ -f "$file" ]]; then
       "${rsync_cmd[@]}" "$file" "$TARGET_PROJECT/"
     fi
   done
-  
+
   log_success "Sync to project complete"
 }
 
 sync_from_project() {
   log_info "Syncing changes FROM project back to template: $TARGET_PROJECT"
-  
+
   local rsync_cmd
   read -ra rsync_cmd <<< "$(build_rsync_cmd)"
-  
+
   # Sync directories (reverse direction)
   for dir in scripts templates .github .vscode; do
     if [[ -d "$TARGET_PROJECT/$dir" ]]; then
       "${rsync_cmd[@]}" "$TARGET_PROJECT/$dir/" "$dir/"
     fi
   done
-  
+
   # Sync individual files (reverse direction)
   for file in Brewfile .swift-version .markdownlint.json; do
     if [[ -f "$TARGET_PROJECT/$file" ]]; then
       "${rsync_cmd[@]}" "$TARGET_PROJECT/$file" ./
     fi
   done
-  
+
   log_success "Sync from project complete"
 }
 
 show_diff() {
   log_info "Showing differences between template and project: $TARGET_PROJECT"
-  
+
   # Use rsync --dry-run to show what would be copied
   rsync -avcn --delete scripts/ templates/ .github/ .vscode/ Brewfile .swift-version .markdownlint.json "$TARGET_PROJECT/" 2>/dev/null || {
     log_info "Run with 'to' mode to see what files would be synced"
@@ -187,11 +186,11 @@ show_diff() {
 main() {
   log_info "Template Development Sync"
   echo
-  
+
   parse_arguments "$@"
   check_template_repo_root
   validate_target_project
-  
+
   case "$SYNC_MODE" in
     to)
       sync_to_project

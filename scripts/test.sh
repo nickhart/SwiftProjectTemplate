@@ -151,7 +151,7 @@ get_simulator_config() {
   local default_os="$DEPLOYMENT_TARGET"
 
   if [[ "$default_os" == "null" || -z "$default_os" ]]; then
-    default_os="18.0"
+    default_os="26.0"
   fi
 
   # Adjust device based on iOS version

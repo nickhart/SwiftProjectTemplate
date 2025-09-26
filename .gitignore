@@ -66,6 +66,43 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
+# Accio dependency management
+Dependencies/
+.accio/
+
+# Code Injection
+#
+# After new code Injection tools there's a generated folder /iOSInjectionProject
+# https://github.com/johnno1962/injectionforxcode
+
+iOSInjectionProject/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Build artifacts
+*.o
+*.lo
+*.la
+*.al
+.libs
+*.so
+*.so.[0-9]*
+*.a
+*.pyc
+*.pyo
+*.rej
+*.swp
+
 # CI Test Projects (prevent accidental commits)
 /ci-test-*/
 /ci-test-project/
