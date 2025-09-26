@@ -141,7 +141,7 @@ sync_to_project() {
   done
 
   # Sync individual files
-  for file in Brewfile .swift-version .markdownlint.json; do
+  for file in Brewfile .gitignore .swift-version .markdownlint.json; do
     if [[ -f "$file" ]]; then
       "${rsync_cmd[@]}" "$file" "$TARGET_PROJECT/"
     fi
@@ -164,7 +164,7 @@ sync_from_project() {
   done
 
   # Sync individual files (reverse direction)
-  for file in Brewfile .swift-version .markdownlint.json; do
+  for file in Brewfile .gitignore .swift-version .markdownlint.json; do
     if [[ -f "$TARGET_PROJECT/$file" ]]; then
       "${rsync_cmd[@]}" "$TARGET_PROJECT/$file" ./
     fi
