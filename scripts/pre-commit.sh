@@ -36,13 +36,13 @@ echo
 # Function to check if tools are available
 check_tools() {
   local missing_tools=()
-  
+
   for tool in swiftformat swiftlint; do
     if ! command_exists "$tool"; then
       missing_tools+=("$tool")
     fi
   done
-  
+
   if [[ ${#missing_tools[@]} -gt 0 ]]; then
     log_warning "Missing tools: ${missing_tools[*]}"
     log_info "Install with: brew bundle install"
@@ -54,9 +54,9 @@ check_tools() {
 # Run SwiftFormat on staged files
 run_swiftformat() {
   log_info "📝 Running SwiftFormat..."
-  
+
   local format_failed=false
-  
+
   if $AUTO_FIX; then
     # Format staged files
     echo "$staged_files" | while read -r file; do
@@ -64,18 +64,18 @@ run_swiftformat() {
         swiftformat "$file"
       fi
     done
-    
+
     # Check if any files were modified
     local modified_files
     modified_files=$(echo "$staged_files" | xargs git diff --name-only 2>/dev/null || true)
-    
+
     if [[ -n "$modified_files" ]]; then
       log_info "SwiftFormat made changes to:"
       echo "$modified_files" | sed 's/^/  • /'
-      
+
       # Re-stage the formatted files
       echo "$modified_files" | xargs git add
-      
+
       log_success "Formatted files re-staged for commit"
     else
       log_success "No formatting changes needed"
@@ -90,7 +90,7 @@ run_swiftformat() {
         fi
       fi
     done
-    
+
     if [[ -n "$format_issues" ]]; then
       log_error "SwiftFormat issues found in: $format_issues"
       log_info "Fix with: ./scripts/format.sh --fix"
@@ -99,7 +99,7 @@ run_swiftformat() {
       log_success "SwiftFormat check passed"
     fi
   fi
-  
+
   if $format_failed; then
     return 1
   fi
@@ -108,18 +108,18 @@ run_swiftformat() {
 # Run SwiftLint on staged files
 run_swiftlint() {
   log_info "🔍 Running SwiftLint..."
-  
+
   local lint_failed=false
   local temp_file=$(mktemp)
-  
+
   # Create temporary file with staged file list
   echo "$staged_files" > "$temp_file"
-  
-  if swiftlint lint --use-stdin-paths < "$temp_file" 2>&1; then
+
+  if swiftlint lint < "$temp_file" 2>&1; then
     log_success "SwiftLint check passed"
   else
     local exit_code=$?
-    
+
     if $ALLOW_WARNINGS && [[ $exit_code -eq 2 ]]; then
       log_warning "SwiftLint found warnings (allowing commit)"
     else
@@ -128,9 +128,9 @@ run_swiftlint() {
       lint_failed=true
     fi
   fi
-  
+
   rm -f "$temp_file"
-  
+
   if $lint_failed; then
     return 1
   fi
@@ -139,9 +139,9 @@ run_swiftlint() {
 # Check for common issues
 run_basic_checks() {
   log_info "✅ Running basic checks..."
-  
+
   local issues=()
-  
+
   # Check for TODO/FIXME in staged files (informational)
   local todo_count=0
   echo "$staged_files" | while read -r file; do
@@ -153,11 +153,11 @@ run_basic_checks() {
       fi
     fi
   done
-  
+
   if [[ $todo_count -gt 0 ]]; then
     log_info "Found TODO/FIXME comments in $todo_count file(s) (informational)"
   fi
-  
+
   # Check for debug prints (warning)
   local debug_prints=()
   echo "$staged_files" | while read -r file; do
@@ -167,33 +167,33 @@ run_basic_checks() {
       fi
     fi
   done
-  
+
   if [[ ${#debug_prints[@]} -gt 0 ]]; then
     log_warning "Found print() statements in:"
     printf '%s\n' "${debug_prints[@]}" | sed 's/^/  • /'
     log_info "Consider removing debug prints before committing"
   fi
-  
+
   log_success "Basic checks completed"
 }
 
 # Main execution
 main() {
   check_tools
-  
+
   local checks_failed=false
-  
+
   # Run all checks
   if ! run_swiftformat; then
     checks_failed=true
   fi
-  
+
   if ! run_swiftlint; then
     checks_failed=true
   fi
-  
+
   run_basic_checks
-  
+
   echo
   if $checks_failed; then
     log_error "❌ Pre-commit checks failed"
