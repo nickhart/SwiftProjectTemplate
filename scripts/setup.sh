@@ -17,7 +17,10 @@ SWIFT_VERSION="6.2"
 PROJECT_TYPE="private"  # private or public
 BUNDLE_ID_ROOT="com.yourcompany"
 TEST_FRAMEWORK="swift-testing"  # swift-testing or xctest
+SOURCE_LANGUAGE="en"
 USE_GIT_HOOKS=true
+CREATE_INITIAL_COMMIT=true
+GIT_REPOSITORY_AVAILABLE=false
 FORCE_OVERWRITE=false
 SKIP_BREW=false
 
@@ -28,7 +31,10 @@ CLI_SWIFT_VERSION_SET=false
 CLI_VISIBILITY_SET=false
 CLI_BUNDLE_ID_ROOT_SET=false
 CLI_TEST_FRAMEWORK_SET=false
+CLI_SOURCE_LANGUAGE_SET=false
 CLI_GIT_HOOKS_SET=false
+CLI_COMMIT_SET=false
+CLI_GIT_INIT_SET=false
 
 show_help() {
   cat <<EOF
@@ -52,8 +58,12 @@ OPTIONS:
                                Format: X.Y (e.g., 5.9, 5.10, 6.0)
   --test-framework <framework> Test framework (default: $TEST_FRAMEWORK)
                                Options: swift-testing, xctest
+  --source-language <code>     Source language for localization (default: $SOURCE_LANGUAGE)
+                               Format: ISO 639-1 code (e.g., en, es, fr, de)
   --git-hooks                  Enable git pre-commit hooks (default)
   --no-git-hooks              Disable git pre-commit hooks
+  --commit                     Create initial git commit after setup (default)
+  --no-commit                  Skip initial git commit after setup
   --public                     Make this a public project (includes LICENSE in README)
   --private                    Make this a private project (default)
   --force                      Overwrite existing files without prompting
@@ -66,8 +76,10 @@ EXAMPLES:
   $0 --project-name "MyApp" --public        # Mostly CLI, minimal prompts
   $0 --project-name "MyApp" \\
      --deployment-target "26.0" \\
-     --swift-version "5.9" \\
+     --swift-version "6.2" \\
+     --source-language "en" \\
      --public --force                       # Full CLI mode
+  $0 --project-name "MyApp" --no-commit    # Skip initial git commit
 
 VALIDATION:
   - Project name must be a valid Swift identifier (alphanumeric, starts with letter)
@@ -80,9 +92,13 @@ WORKFLOW:
   3. Install Homebrew dependencies (unless --skip-brew)
   4. Generate all configuration files from templates
   5. Create MVVM folder structure
-  6. Generate Xcode project with XcodeGen
-  7. Set up git pre-commit hooks
-  8. Display next steps
+  6. Create Resources with localization and asset catalogs
+  7. Generate Xcode project with XcodeGen
+  8. Configure simulators with intelligent defaults
+  9. Verify or create git repository (offers to run 'git init' if not in a repository)
+  10. Set up git pre-commit hooks (if git repository available)
+  11. Create initial git commit with project details (unless --no-commit)
+  12. Display next steps
 
 EOF
 }
@@ -139,6 +155,15 @@ parse_arguments() {
         CLI_TEST_FRAMEWORK_SET=true
         shift 2
         ;;
+      --source-language)
+        if [[ -z "${2:-}" ]]; then
+          log_error "Option --source-language requires a value"
+          exit 1
+        fi
+        SOURCE_LANGUAGE="$2"
+        CLI_SOURCE_LANGUAGE_SET=true
+        shift 2
+        ;;
       --git-hooks)
         USE_GIT_HOOKS=true
         CLI_GIT_HOOKS_SET=true
@@ -147,6 +172,16 @@ parse_arguments() {
       --no-git-hooks)
         USE_GIT_HOOKS=false
         CLI_GIT_HOOKS_SET=true
+        shift
+        ;;
+      --commit)
+        CREATE_INITIAL_COMMIT=true
+        CLI_COMMIT_SET=true
+        shift
+        ;;
+      --no-commit)
+        CREATE_INITIAL_COMMIT=false
+        CLI_COMMIT_SET=true
         shift
         ;;
       --public)
@@ -313,6 +348,15 @@ prompt_for_missing_info() {
     done
   fi
 
+  # Only prompt for source language if not provided via CLI
+  if [[ "$CLI_SOURCE_LANGUAGE_SET" == false ]]; then
+    echo
+    read -p "Source language for localization (default: $SOURCE_LANGUAGE): " input_source_language
+    if [[ -n "$input_source_language" ]]; then
+      SOURCE_LANGUAGE="$input_source_language"
+    fi
+  fi
+
   # Only prompt for git hooks if not provided via CLI
   if [[ "$CLI_GIT_HOOKS_SET" == false ]]; then
     echo
@@ -337,6 +381,33 @@ prompt_for_missing_info() {
         * ) echo "Please answer yes or no.";;
       esac
     done
+  fi
+
+  # Handle git repository initialization if not already in one and git features are needed
+  if ! is_git_repo && ($USE_GIT_HOOKS || $CREATE_INITIAL_COMMIT) && [[ "$CLI_GIT_INIT_SET" == false ]]; then
+    echo
+    log_warning "Not in a git repository"
+    while true; do
+      read -p "Would you like to initialize a git repository? (Y/n): " yn
+      case $yn in
+        [Yy]*|"")
+          log_info "Will initialize git repository during setup"
+          GIT_REPOSITORY_AVAILABLE=true
+          break
+          ;;
+        [Nn]*)
+          log_info "Git repository will not be initialized"
+          log_info "Git hooks and initial commit will be skipped"
+          GIT_REPOSITORY_AVAILABLE=false
+          break
+          ;;
+        *) echo "Please answer yes or no.";;
+      esac
+    done
+  elif is_git_repo; then
+    GIT_REPOSITORY_AVAILABLE=true
+  else
+    GIT_REPOSITORY_AVAILABLE=false
   fi
 }
 
@@ -480,7 +551,6 @@ create_project_structure() {
     "$PROJECT_NAME/Services"
     "$PROJECT_NAME/Extensions"
     "$PROJECT_NAME/Helpers"
-    "$PROJECT_NAME/Resources"
   )
 
   # Create test directories
@@ -784,6 +854,101 @@ EOF
   fi
 }
 
+create_resources_structure() {
+  log_info "Creating Resources with localization and asset catalogs..."
+
+  # Create Resources directory if it doesn't exist
+  mkdir -p "$PROJECT_NAME/Resources"
+
+  # Create Localizable.xcstrings
+  local localizable_file="$PROJECT_NAME/Resources/Localizable.xcstrings"
+  if [[ ! -f "$localizable_file" || "$FORCE_OVERWRITE" == true ]]; then
+    cat > "$localizable_file" <<EOF
+{
+  "sourceLanguage" : "$SOURCE_LANGUAGE",
+  "strings" : {
+  },
+  "version" : "1.1"
+}
+EOF
+    log_success "Created Localizable.xcstrings with source language: $SOURCE_LANGUAGE"
+  fi
+
+  # Create Asset Catalog structure
+  local assets_dir="$PROJECT_NAME/Resources/Assets.xcassets"
+  mkdir -p "$assets_dir"
+
+  # Main Assets.xcassets Contents.json
+  cat > "$assets_dir/Contents.json" <<EOF
+{
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+EOF
+
+  # Create AppIcon.appiconset
+  local appicon_dir="$assets_dir/AppIcon.appiconset"
+  mkdir -p "$appicon_dir"
+  cat > "$appicon_dir/Contents.json" <<EOF
+{
+  "images" : [
+    {
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "tinted"
+        }
+      ],
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+EOF
+
+  # Create AccentColor.colorset
+  local accentcolor_dir="$assets_dir/AccentColor.colorset"
+  mkdir -p "$accentcolor_dir"
+  cat > "$accentcolor_dir/Contents.json" <<EOF
+{
+  "colors" : [
+    {
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+EOF
+
+  log_success "Created Assets.xcassets with AppIcon and AccentColor"
+}
+
 generate_xcode_project() {
   log_info "Generating Xcode project with XcodeGen..."
 
@@ -882,14 +1047,38 @@ setup_default_simulators() {
   echo "  ./scripts/simulator.sh show-config"
 }
 
+verify_or_create_git_repository() {
+  # If already in a git repository, nothing to do
+  if is_git_repo; then
+    return
+  fi
+
+  # If git repository should be created (determined during prompting)
+  if $GIT_REPOSITORY_AVAILABLE; then
+    log_info "Initializing git repository with 'main' as default branch..."
+
+    # Try modern git init with --initial-branch, fallback for older git versions
+    if git init --initial-branch=main 2>/dev/null; then
+      log_success "Git repository initialized with 'main' branch"
+    elif git init 2>/dev/null; then
+      # Older git version - rename default branch to main
+      git checkout -b main 2>/dev/null || true
+      log_success "Git repository initialized and switched to 'main' branch"
+    else
+      log_error "Failed to initialize git repository"
+      GIT_REPOSITORY_AVAILABLE=false
+    fi
+  fi
+}
+
 setup_git_hooks() {
   if ! $USE_GIT_HOOKS; then
     log_info "Git hooks disabled, skipping git hook setup"
     return
   fi
 
-  if ! is_git_repo; then
-    log_warning "Not in a git repository, skipping git hook setup"
+  if ! $GIT_REPOSITORY_AVAILABLE; then
+    log_info "Git repository not available, skipping git hook setup"
     return
   fi
 
@@ -910,12 +1099,57 @@ EOF
   log_info "Hook will run formatting, linting, and build checks before commits"
 }
 
+create_initial_commit() {
+  if ! $CREATE_INITIAL_COMMIT; then
+    log_info "Initial commit disabled, skipping git commit"
+    return
+  fi
+
+  if ! $GIT_REPOSITORY_AVAILABLE; then
+    log_info "Git repository not available, skipping initial commit"
+    return
+  fi
+
+  log_info "Creating initial git commit..."
+
+  # Add all generated files
+  git add . 2>/dev/null
+
+  # Check if there are files to commit
+  if git diff --cached --quiet; then
+    log_warning "No changes to commit"
+    return
+  fi
+
+  # Create initial commit with descriptive message
+  local commit_message="Initial project setup
+
+Generated iOS project using SwiftProjectTemplate with:
+- Project: $PROJECT_NAME
+- Bundle ID: ${BUNDLE_ID_ROOT}.${PROJECT_NAME}
+- iOS Deployment Target: $DEPLOYMENT_TARGET
+- Swift Version: $SWIFT_VERSION
+- Test Framework: $TEST_FRAMEWORK
+- Source Language: $SOURCE_LANGUAGE"
+
+  if git commit -m "$commit_message" 2>/dev/null; then
+    log_success "Initial commit created successfully"
+    log_info "You can view the commit with: git log --oneline -1"
+  else
+    log_error "Failed to create initial commit"
+    log_info "You may need to configure git user settings:"
+    echo "  git config --global user.name \"Your Name\""
+    echo "  git config --global user.email \"your.email@example.com\""
+  fi
+}
+
 display_next_steps() {
   log_success "🎉 Project setup complete!"
   echo
   echo "Project: $PROJECT_NAME"
   echo "iOS Deployment Target: $DEPLOYMENT_TARGET"
   echo "Swift Version: $SWIFT_VERSION"
+  echo "Source Language: $SOURCE_LANGUAGE"
   echo "Project Type: $PROJECT_TYPE"
   echo
   log_info "Next steps:"
@@ -954,6 +1188,7 @@ main() {
   log_info "  Deployment Target: iOS $DEPLOYMENT_TARGET"
   log_info "  Swift Version: $SWIFT_VERSION"
   log_info "  Test Framework: $TEST_FRAMEWORK"
+  log_info "  Source Language: $SOURCE_LANGUAGE"
   log_info "  Git Hooks: $(if $USE_GIT_HOOKS; then echo "enabled"; else echo "disabled"; fi)"
   log_info "  Project Type: $PROJECT_TYPE"
   echo
@@ -961,9 +1196,12 @@ main() {
   install_dependencies
   generate_template_files
   create_project_structure
+  create_resources_structure
   generate_xcode_project
   setup_default_simulators
+  verify_or_create_git_repository
   setup_git_hooks
+  create_initial_commit
 
   display_next_steps
 }
