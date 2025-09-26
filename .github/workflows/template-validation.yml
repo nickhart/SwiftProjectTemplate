@@ -18,12 +18,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check if this is the template repository
+        id: repo_check
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          if [[ "$GITHUB_REPOSITORY" == *"/SwiftProjectTemplate" ]]; then
+            echo "✅ This is the SwiftProjectTemplate repository - proceeding with validation"
+            echo "is_template_repo=true" >> $GITHUB_OUTPUT
+          else
+            echo "ℹ️  This is a generated project repository - skipping template validation"
+            echo "💡 Template validation only runs on the SwiftProjectTemplate repository"
+            echo "is_template_repo=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up Xcode
+        if: steps.repo_check.outputs.is_template_repo == 'true'
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "16.0"
 
       - name: Cache Homebrew packages
+        if: steps.repo_check.outputs.is_template_repo == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -34,6 +49,7 @@ jobs:
             ${{ runner.os }}-homebrew-
 
       - name: Install dependencies
+        if: steps.repo_check.outputs.is_template_repo == 'true'
         run: |
           # Install Homebrew dependencies
           brew bundle install --file=./Brewfile
@@ -46,6 +62,7 @@ jobs:
           yq --version
 
       - name: Generate test project
+        if: steps.repo_check.outputs.is_template_repo == 'true'
         run: |
           echo "🏗️ Generating test project for E2E validation..."
           echo "Working directory: $(pwd)"
@@ -58,22 +75,10 @@ jobs:
           echo "Running setup script from template root directory"
           echo "Target directory: $(pwd)/ci-test-project"
 
-          set -x  # Enable verbose output
           cd ci-test-project
 
-          echo "🔍 Debugging setup script execution..."
-          echo "Current directory: $(pwd)"
-          echo "Setup script location: $(ls -la scripts/setup.sh)"
-          echo "Setup script is executable: $(test -x scripts/setup.sh && echo 'YES' || echo 'NO')"
-
-          # Check if all required tools are available
-          echo "🔧 Checking tool availability..."
-          which bash || echo "bash not found"
-          bash --version || echo "bash version check failed"
-
-          # Run setup script with bash debugging and verbose output
-          echo "🚀 Running setup script with full debugging..."
-          bash -x ./scripts/setup.sh \
+          echo "🚀 Running setup script to generate test project..."
+          ./scripts/setup.sh \
             --project-name "CITestApp" \
             --bundle-id-root "com.ci.test" \
             --deployment-target 18.0 \
@@ -84,26 +89,18 @@ jobs:
             --no-commit \
             --public \
             --skip-brew \
-            --force 2>&1 || {
+            --force || {
               echo "❌ Setup script failed with exit code $?"
-              echo ""
-              echo "📁 Contents of current directory:"
-              ls -la
-              echo ""
-              echo "📁 Contents of parent directory:"
-              ls -la ..
-              echo ""
-              echo "📝 Setup script contents (first 50 lines):"
-              head -50 scripts/setup.sh
+              echo "💡 For detailed debugging, enable ACTIONS_STEP_DEBUG in repository settings"
               exit 1
             }
-          set +x  # Disable verbose output
 
           echo "✓ Test project generated successfully"
           echo "Generated files:"
           ls -la
 
       - name: Run E2E validation on generated project
+        if: steps.repo_check.outputs.is_template_repo == 'true'
         run: |
           echo "🔍 Running end-to-end validation on generated project..."
           cd ci-test-project
@@ -115,13 +112,14 @@ jobs:
           echo "✓ E2E validation completed successfully"
 
       - name: Cleanup test project
-        if: always()
+        if: always() && steps.repo_check.outputs.is_template_repo == 'true'
         run: |
           echo "🧹 Cleaning up test project..."
           rm -rf ci-test-project
           echo "✓ Cleanup completed"
 
       - name: Template validation summary
+        if: steps.repo_check.outputs.is_template_repo == 'true'
         run: |
           echo "🎉 Template Validation Complete!"
           echo ""
@@ -130,3 +128,18 @@ jobs:
           echo "✅ E2E workflow validated"
           echo ""
           echo "Template is ready for use! 🚀"
+
+      - name: Generated repository info
+        if: steps.repo_check.outputs.is_template_repo == 'false'
+        run: |
+          echo "🎉 Welcome to your new iOS project!"
+          echo ""
+          echo "This repository was created from SwiftProjectTemplate."
+          echo "Template validation is skipped for generated projects."
+          echo ""
+          echo "📖 Next steps:"
+          echo "  1. Run './scripts/setup.sh' to configure your project"
+          echo "  2. Follow the README.md for development guidance"
+          echo "  3. Start building your iOS app!"
+          echo ""
+          echo "✨ Happy coding! 🚀"
