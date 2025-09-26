@@ -1,0 +1,115 @@
+name: Template Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  validate-template:
+    name: Template End-to-End Validation
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.4"
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew
+          key: ${{ runner.os }}-homebrew-${{ hashFiles('**/Brewfile') }}
+          restore-keys: |
+            ${{ runner.os }}-homebrew-
+
+      - name: Install dependencies
+        run: |
+          # Install Homebrew dependencies
+          brew bundle install --file=./Brewfile
+
+          # Verify installations
+          echo "Installed versions:"
+          swiftlint --version
+          swiftformat --version
+          xcodegen --version
+          yq --version
+
+      - name: Generate test project
+        run: |
+          echo "🏗️ Generating test project for E2E validation..."
+          echo "Working directory: $(pwd)"
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+
+          # Create test directory but run setup from template root
+          mkdir -p ci-test-project
+          ./scripts/dev-sync.sh to ci-test-project
+
+          echo "Running setup script from template root directory"
+          echo "Target directory: $(pwd)/ci-test-project"
+
+          set -x  # Enable verbose output
+          cd ci-test-project
+
+          # Run setup script from template root, but in the ci-test-project context
+          ./scripts/setup.sh \
+            --project-name "CITestApp" \
+            --bundle-id-root "com.ci.test" \
+            --deployment-target 18.0 \
+            --swift-version 5.10 \
+            --test-framework "swift-testing" \
+            --no-git-hooks \
+            --no-commit \
+            --public \
+            --skip-brew \
+            --force || {
+              echo "Setup script failed with exit code $?"
+              echo "Contents of current directory:"
+              ls -la
+              echo "Contents of parent directory:"
+              ls -la ..
+              exit 1
+            }
+          set +x  # Disable verbose output
+
+          echo "✓ Test project generated successfully"
+          echo "Generated files:"
+          ls -la
+
+      - name: Run E2E validation on generated project
+        run: |
+          echo "🔍 Running end-to-end validation on generated project..."
+          cd ci-test-project
+
+          # Run the generated project's preflight check
+          echo "Running preflight check..."
+          ./scripts/preflight.sh
+
+          echo "✓ E2E validation completed successfully"
+
+      - name: Cleanup test project
+        if: always()
+        run: |
+          echo "🧹 Cleaning up test project..."
+          rm -rf ci-test-project
+          echo "✓ Cleanup completed"
+
+      - name: Template validation summary
+        run: |
+          echo "🎉 Template Validation Complete!"
+          echo ""
+          echo "✅ Template generates project successfully"
+          echo "✅ Generated project passes all quality checks"
+          echo "✅ E2E workflow validated"
+          echo ""
+          echo "Template is ready for use! 🚀"

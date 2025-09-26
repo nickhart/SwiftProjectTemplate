@@ -493,6 +493,7 @@ generate_template_files() {
     ".swiftlint.yml.template:.swiftlint.yml"
     ".swiftformat.template:.swiftformat"
     "README.md.template:README.md"
+    "ci.yml.template:.github/workflows/ci.yml"
   )
 
   for file_mapping in "${files_to_generate[@]}"; do
@@ -531,6 +532,14 @@ generate_template_files() {
 
     # Generate file from template
     if [[ -f "$template_path" ]]; then
+      # Create output directory if needed
+      local output_dir
+      output_dir=$(dirname "$output_path")
+      if [[ ! -d "$output_dir" ]]; then
+        mkdir -p "$output_dir"
+        log_info "Created directory: $output_dir"
+      fi
+
       replace_template_vars "$template_path" "$output_path" "${template_vars[@]}"
       log_success "Generated $output_file"
     else
