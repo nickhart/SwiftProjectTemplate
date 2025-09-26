@@ -4,8 +4,8 @@ A comprehensive iOS project template repository that includes all common infrast
 
 [![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](https://github.com/nickhart/SwiftProjectTemplate/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Swift 5.10](https://img.shields.io/badge/Swift-5.10-orange.svg)](https://swift.org)
-[![iOS 18.0+](https://img.shields.io/badge/iOS-18.0%2B-blue.svg)](https://developer.apple.com/ios/)
+[![Swift 6.2](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org)
+[![iOS 26.0+](https://img.shields.io/badge/iOS-26.0%2B-blue.svg)](https://developer.apple.com/ios/)
 
 ## Features
 
@@ -112,7 +112,7 @@ MyAwesomeApp/
 ./scripts/setup.sh --project-name "MyApp"
 
 # Full CLI mode
-./scripts/setup.sh --project-name "MyApp" --deployment-target "17.0" --public --force
+./scripts/setup.sh --project-name "MyApp" --deployment-target "26.0" --public --force
 ```
 
 #### Intelligent Configuration
@@ -150,8 +150,8 @@ The setup script supports both interactive and CLI modes:
 Options:
   --project-name <name>         Project name (e.g., "FooApp")
   --bundle-id-root              bundle id root for your project (eg: "com.yourname")
-  --deployment-target <version> iOS deployment target (default: 18.0)
-  --swift-version <version>     Swift version (default: 5.10)
+  --deployment-target <version> iOS deployment target (default: 26.0)
+  --swift-version <version>     Swift version (default: 6.2)
   --test-framework              swift-testing or XCTest (default: swift-testing)
   --public                      Public project (includes **MIT** LICENSE in README)
   --private                     Private project (default)
@@ -167,7 +167,7 @@ Configure simulators that match your project needs:
 
 ```bash
 # Configure test simulator
-./scripts/simulator.sh config-tests "iPhone 16 Pro" --os 17.5
+./scripts/simulator.sh config-tests "iPhone 16 Pro" --os 26.0
 
 # Configure UI test simulator
 ./scripts/simulator.sh config-ui-tests "iPad Pro 12.9-inch" --force
@@ -193,9 +193,15 @@ Configure simulators that match your project needs:
 
 ## Requirements
 
-- **macOS** with Xcode 15.0+
+### System Requirements
+- **macOS** with Xcode 16.0+
 - **Homebrew** for dependency management
 - **Git** for version control
+
+### Supported Versions
+- **iOS Deployment Targets**: 17.0, 18.0, 26.0 (default 26.0)
+- **Swift Versions**: 5.5, 5.9, 5.10, 6.0, 6.1, 6.2 (default: 6.2)
+- **Xcode Version**: 16.0, 26.0 (26.0 required for latest SDK and Swift support)
 
 The setup script will install all other dependencies automatically.
 
@@ -247,8 +253,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Release History
 
 - **0.1**: initial release
-  - Validated by creating a simple iOS app targeting iOS 18 and using Swift Testing.
-  - **Release Notes**: manually remove `./tempates` and `TODO.md` from generated project.
+  - Validated by creating a simple iOS app targeting iOS 26 and using Swift Testing.
+  - Updated for iOS 26 support with Swift 6.2 default
+  - Force overwrite template-specific files (.gitignore, README.md, TODO.md)
+  - **Release Notes**: manually remove `./templates` and `TODO.md` from generated project.
 
 ## Acknowledgments
 

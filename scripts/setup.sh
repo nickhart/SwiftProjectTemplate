@@ -12,8 +12,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/_helpers.sh"
 
 # Default values
 PROJECT_NAME=""
-DEPLOYMENT_TARGET="18.0"
-SWIFT_VERSION="5.10"
+DEPLOYMENT_TARGET="26.0"
+SWIFT_VERSION="6.2"
 PROJECT_TYPE="private"  # private or public
 BUNDLE_ID_ROOT="com.yourcompany"
 TEST_FRAMEWORK="swift-testing"  # swift-testing or xctest
@@ -47,7 +47,7 @@ OPTIONS:
   --bundle-id-root <root>       Bundle identifier root (default: $BUNDLE_ID_ROOT)
                                Format: com.yourname or com.company
   --deployment-target <version> iOS deployment target (default: $DEPLOYMENT_TARGET)
-                               Format: X.Y (e.g., 16.0, 17.5, 18.1)
+                               Format: X.Y (e.g., 17.0, 18.0, 26.0)
   --swift-version <version>     Swift version (default: $SWIFT_VERSION)
                                Format: X.Y (e.g., 5.9, 5.10, 6.0)
   --test-framework <framework> Test framework (default: $TEST_FRAMEWORK)
@@ -65,7 +65,7 @@ EXAMPLES:
   $0 --project-name "MyApp"                 # CLI + interactive for missing info
   $0 --project-name "MyApp" --public        # Mostly CLI, minimal prompts
   $0 --project-name "MyApp" \\
-     --deployment-target "17.0" \\
+     --deployment-target "26.0" \\
      --swift-version "5.9" \\
      --public --force                       # Full CLI mode
 
@@ -76,7 +76,7 @@ VALIDATION:
 
 WORKFLOW:
   1. Parse CLI arguments and validate for conflicts
-  2. Prompt interactively for missing required information  
+  2. Prompt interactively for missing required information
   3. Install Homebrew dependencies (unless --skip-brew)
   4. Generate all configuration files from templates
   5. Create MVVM folder structure
@@ -209,7 +209,7 @@ validate_inputs() {
       has_errors=true
     fi
   fi
-  
+
   # Validate bundle ID root
   if [[ -n "$BUNDLE_ID_ROOT" ]]; then
     if ! validate_bundle_id_root "$BUNDLE_ID_ROOT"; then
@@ -223,7 +223,7 @@ validate_inputs() {
   # Validate deployment target
   if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
     log_error "Invalid deployment target: '$DEPLOYMENT_TARGET'"
-    log_info "Deployment target must be in format X.Y (e.g., 16.0, 17.5, 18.1)"
+    log_info "Deployment target must be in format X.Y (e.g., 17.0, 18.0, 26.0)"
     has_errors=true
   fi
 
@@ -279,7 +279,7 @@ prompt_for_missing_info() {
       DEPLOYMENT_TARGET="$input_deployment_target"
       if ! validate_ios_version "$DEPLOYMENT_TARGET"; then
         log_error "Invalid deployment target format. Using default: $DEPLOYMENT_TARGET"
-        DEPLOYMENT_TARGET="18.0"
+        DEPLOYMENT_TARGET="26.0"
       fi
     fi
   fi
@@ -292,7 +292,7 @@ prompt_for_missing_info() {
       SWIFT_VERSION="$input_swift_version"
       if ! validate_swift_version "$SWIFT_VERSION"; then
         log_error "Invalid Swift version format. Using default: $SWIFT_VERSION"
-        SWIFT_VERSION="5.10"
+        SWIFT_VERSION="6.2"
       fi
     fi
   fi
@@ -356,7 +356,7 @@ install_dependencies() {
   fi
 
   log_info "Installing Homebrew dependencies..."
-  
+
   if ! command_exists brew; then
     log_error "Homebrew is not installed"
     log_info "Please install Homebrew first: https://brew.sh"
@@ -387,7 +387,6 @@ generate_template_files() {
     "PROJECT_NAME=$PROJECT_NAME"
     "PROJECT_NAME_LOWER=$project_name_lower"
     "BUNDLE_ID_ROOT=$BUNDLE_ID_ROOT"
-    "BUNDLE_IDENTIFIER=${BUNDLE_ID_ROOT}.${project_name_lower}"
     "DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET"
     "SWIFT_VERSION=$SWIFT_VERSION"
     "SIMULATOR_ARCH=$simulator_arch"
@@ -422,11 +421,7 @@ generate_template_files() {
     "project.yml.template:project.yml"
     ".swiftlint.yml.template:.swiftlint.yml"
     ".swiftformat.template:.swiftformat"
-    ".gitignore.template:.gitignore"
-    "simulator.yml.template:simulator.yml"
     "README.md.template:README.md"
-    "CLAUDE.md.template:CLAUDE.md"
-    "TODO.md.template:TODO.md"
   )
 
   for file_mapping in "${files_to_generate[@]}"; do
@@ -436,18 +431,31 @@ generate_template_files() {
     local output_path="$ROOT_DIR/$output_file"
 
     # Check if output file exists and handle overwrite
-    if [[ -f "$output_path" && "$FORCE_OVERWRITE" != true ]]; then
+    # Force overwrite for template-specific files that should always be regenerated
+    local force_overwrite_files=("README.md")
+    local should_force_overwrite=false
+
+    for force_file in "${force_overwrite_files[@]}"; do
+      if [[ "$output_file" == "$force_file" ]]; then
+        should_force_overwrite=true
+        break
+      fi
+    done
+
+    if [[ -f "$output_path" && "$FORCE_OVERWRITE" != true && "$should_force_overwrite" != true ]]; then
       log_warning "File $output_file already exists"
       while true; do
         read -p "Overwrite $output_file? (y/n): " yn
         case $yn in
           [Yy]* ) break;;
-          [Nn]* ) 
+          [Nn]* )
             log_info "Skipping $output_file"
             continue 2;;
           * ) echo "Please answer yes or no.";;
         esac
       done
+    elif [[ -f "$output_path" && "$should_force_overwrite" == true ]]; then
+      log_info "Force overwriting $output_file (template-specific file)"
     fi
 
     # Generate file from template
@@ -458,6 +466,7 @@ generate_template_files() {
       log_warning "Template $template_file not found, skipping"
     fi
   done
+
 }
 
 create_project_structure() {
@@ -522,18 +531,18 @@ struct ContentView: View {
                 Image(systemName: "swift")
                     .font(.system(size: 80))
                     .foregroundColor(.blue)
-                
+
                 Text("Welcome to $PROJECT_NAME!")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
-                
+
                 Text("Your iOS app is ready to build amazing things.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
-                
+
                 Button("Get Started") {
                     print("Hello from $PROJECT_NAME!")
                 }
@@ -564,10 +573,10 @@ import Combine
 class MainViewModel: ObservableObject {
     @Published var message = "Hello from $PROJECT_NAME!"
     @Published var isLoading = false
-    
+
     func refreshData() {
         isLoading = true
-        
+
         // Simulate async work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.message = "Data refreshed at \(Date().formatted(date: .omitted, time: .shortened))"
@@ -583,7 +592,7 @@ EOF
   local viewmodel_test_file="${PROJECT_NAME}Tests/ViewModels/MainViewModelTests.swift"
   if [[ ! -f "$viewmodel_test_file" || "$FORCE_OVERWRITE" == true ]]; then
     mkdir -p "${PROJECT_NAME}Tests/ViewModels"
-    
+
     if [[ "$TEST_FRAMEWORK" == "swift-testing" ]]; then
       cat > "$viewmodel_test_file" <<EOF
 import Testing
@@ -592,25 +601,25 @@ import Combine
 
 @MainActor
 struct MainViewModelTests {
-    
+
     @Test("Initial state should be correct")
     func initialState() {
         let viewModel = MainViewModel()
         #expect(viewModel.message == "Hello from $PROJECT_NAME!")
         #expect(viewModel.isLoading == false)
     }
-    
+
     @Test("Refresh data should update message and loading state")
     func refreshData() async {
         let viewModel = MainViewModel()
-        
+
         // Start refresh
         viewModel.refreshData()
         #expect(viewModel.isLoading == true)
-        
+
         // Wait for completion
         try? await Task.sleep(nanoseconds: 1_100_000_000) // 1.1 seconds
-        
+
         #expect(viewModel.isLoading == false)
         #expect(viewModel.message.contains("Data refreshed"))
     }
@@ -626,27 +635,27 @@ import Combine
 final class MainViewModelTests: XCTestCase {
     var viewModel: MainViewModel!
     var cancellables: Set<AnyCancellable>!
-    
+
     override func setUp() {
         super.setUp()
         viewModel = MainViewModel()
         cancellables = Set<AnyCancellable>()
     }
-    
+
     override func tearDown() {
         viewModel = nil
         cancellables = nil
         super.tearDown()
     }
-    
+
     func testInitialState() throws {
         XCTAssertEqual(viewModel.message, "Hello from $PROJECT_NAME!")
         XCTAssertFalse(viewModel.isLoading)
     }
-    
+
     func testRefreshData() throws {
         let expectation = XCTestExpectation(description: "Data refresh completes")
-        
+
         viewModel.\$message
             .dropFirst() // Skip initial value
             .sink { message in
@@ -654,10 +663,10 @@ final class MainViewModelTests: XCTestCase {
                 expectation.fulfill()
             }
             .store(in: &cancellables)
-        
+
         viewModel.refreshData()
         XCTAssertTrue(viewModel.isLoading)
-        
+
         wait(for: [expectation], timeout: 2.0)
         XCTAssertFalse(viewModel.isLoading)
     }
@@ -674,7 +683,7 @@ EOF
 import XCTest
 
 final class ${PROJECT_NAME}UITests: XCTestCase {
-    var app: XCUIApplication
+    nonisolated(unsafe) var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -682,22 +691,24 @@ final class ${PROJECT_NAME}UITests: XCTestCase {
         app.launch()
     }
 
+    @MainActor
     func testAppLaunches() throws {
         // Test that the app launches and shows the main content
         let navigationTitle = app.navigationBars["$PROJECT_NAME"]
         XCTAssertTrue(navigationTitle.exists)
-        
+
         let welcomeText = app.staticTexts["Welcome to $PROJECT_NAME!"]
         XCTAssertTrue(welcomeText.exists)
-        
+
         let getStartedButton = app.buttons["Get Started"]
         XCTAssertTrue(getStartedButton.exists)
     }
-    
+
+    @MainActor
     func testGetStartedButton() throws {
         let getStartedButton = app.buttons["Get Started"]
         XCTAssertTrue(getStartedButton.exists)
-        
+
         getStartedButton.tap()
         // Add assertions for what should happen when button is tapped
     }
@@ -775,7 +786,7 @@ EOF
 
 generate_xcode_project() {
   log_info "Generating Xcode project with XcodeGen..."
-  
+
   if ! command_exists xcodegen; then
     log_error "XcodeGen is not installed"
     log_info "Install it with: brew install xcodegen"
@@ -791,6 +802,86 @@ generate_xcode_project() {
   fi
 }
 
+setup_default_simulators() {
+  log_info "Configuring default simulators..."
+
+  # Try to find a good default iPhone for tests
+  local default_iphone=""
+  local default_ipad=""
+
+  # List of preferred iPhone devices (newest first)
+  local preferred_iphones=(
+    "iPhone 17 Pro"
+    "iPhone 17"
+    "iPhone 16 Pro"
+    "iPhone 16"
+    "iPhone 15 Pro"
+    "iPhone 15"
+    "iPhone 14 Pro"
+    "iPhone 14"
+  )
+
+  # List of preferred iPad devices (newest first)
+  local preferred_ipads=(
+    "iPad Air 11-inch (M3)"
+    "iPad Pro 11-inch (M4)"
+    "iPad Air 11-inch (M2)"
+    "iPad Pro 12.9-inch (6th generation)"
+    "iPad Air (5th generation)"
+  )
+
+  # Find first available iPhone
+  for iphone in "${preferred_iphones[@]}"; do
+    if "$ROOT_DIR/scripts/simulator.sh" optimal-os "$iphone" >/dev/null 2>&1; then
+      default_iphone="$iphone"
+      break
+    fi
+  done
+
+  # Find first available iPad
+  for ipad in "${preferred_ipads[@]}"; do
+    if "$ROOT_DIR/scripts/simulator.sh" optimal-os "$ipad" >/dev/null 2>&1; then
+      default_ipad="$ipad"
+      break
+    fi
+  done
+
+  # Configure unit tests simulator
+  if [[ -n "$default_iphone" ]]; then
+    log_info "Configuring unit tests with: $default_iphone"
+    if "$ROOT_DIR/scripts/simulator.sh" config-tests "$default_iphone" --yes; then
+      log_success "Unit tests simulator configured"
+    else
+      log_warning "Failed to configure unit tests simulator"
+    fi
+  else
+    log_warning "No suitable iPhone simulator found for unit tests"
+    log_info "You can configure manually with: ./scripts/simulator.sh config-tests \"<device_name>\""
+  fi
+
+  # Configure UI tests simulator (prefer iPad if available, fallback to iPhone)
+  local ui_device="$default_ipad"
+  if [[ -z "$ui_device" ]]; then
+    ui_device="$default_iphone"
+  fi
+
+  if [[ -n "$ui_device" ]]; then
+    log_info "Configuring UI tests with: $ui_device"
+    if "$ROOT_DIR/scripts/simulator.sh" config-ui-tests "$ui_device" --yes; then
+      log_success "UI tests simulator configured"
+    else
+      log_warning "Failed to configure UI tests simulator"
+    fi
+  else
+    log_warning "No suitable simulator found for UI tests"
+    log_info "You can configure manually with: ./scripts/simulator.sh config-ui-tests \"<device_name>\""
+  fi
+
+  echo
+  log_info "Simulator configuration complete. To view current settings:"
+  echo "  ./scripts/simulator.sh show-config"
+}
+
 setup_git_hooks() {
   if ! $USE_GIT_HOOKS; then
     log_info "Git hooks disabled, skipping git hook setup"
@@ -803,17 +894,17 @@ setup_git_hooks() {
   fi
 
   log_info "Setting up git pre-commit hook..."
-  
+
   local hooks_dir="$ROOT_DIR/.git/hooks"
   local pre_commit_hook="$hooks_dir/pre-commit"
 
   mkdir -p "$hooks_dir"
-  
+
   cat > "$pre_commit_hook" <<EOF
 #!/usr/bin/env bash
 exec "$ROOT_DIR/scripts/pre-commit.sh" "\$@"
 EOF
-  
+
   chmod +x "$pre_commit_hook"
   log_success "Git pre-commit hook installed"
   log_info "Hook will run formatting, linting, and build checks before commits"
@@ -828,11 +919,12 @@ display_next_steps() {
   echo "Project Type: $PROJECT_TYPE"
   echo
   log_info "Next steps:"
-  echo "  1. Configure simulators for building and testing:"
+  echo "  1. [optional] Reconfigure simulators for building and testing:"
   echo "     ./scripts/simulator.sh list"
   echo "     ./scripts/simulator.sh config-tests \"iPhone 16 Pro\""
-  echo "  2. Open $PROJECT_NAME.xcodeproj in Xcode"
-  echo "  3. Update bundle identifier in project.yml if needed"
+  echo "  2. [optional] run the preflight script to verify everything builds and tests with 0 errors!"
+  echo "     ./scripts/preflight.sh"
+  echo "  3. Open $PROJECT_NAME.xcodeproj in Xcode"
   echo "  4. Start building your app!"
   echo
   log_info "Available commands:"
@@ -843,7 +935,7 @@ display_next_steps() {
   echo "  ./scripts/preflight.sh                # Full CI check"
   echo "  ./scripts/simulator.sh list           # List available simulators"
   echo
-  log_info "Need help? Check README.md or CLAUDE.md for guidance."
+  log_info "Need help? Check README.md for guidance."
 }
 
 # Main execution
@@ -870,8 +962,9 @@ main() {
   generate_template_files
   create_project_structure
   generate_xcode_project
+  setup_default_simulators
   setup_git_hooks
-  
+
   display_next_steps
 }
 
