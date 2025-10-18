@@ -22,36 +22,71 @@ USE_GIT_HOOKS=true
 CREATE_INITIAL_COMMIT=true
 FORCE_OVERWRITE=false
 SKIP_BREW=false
+GENERATE_MINIMAL=false
+STRUCTURE="mvvm"  # mvvm, clean, or none
+PROJECT_MODE=""   # Will be set to "adopt" or "generate"
 
 show_help() {
   cat <<EOF
 SwiftProjectTemplate Setup Script
 
-This script configures the template by replacing placeholders with your project details.
+Configures the template for your project. Supports two modes:
+1. ADOPT mode: Integrate with existing Xcode project
+2. GENERATE mode: Create minimal project from scratch
 
 USAGE:
-  $0 [OPTIONS]
+  $0 --project-name <name> [OPTIONS]
 
-OPTIONS:
+PRIMARY OPTIONS:
   --project-name <name>         Project name (required)
+  --generate-minimal            Create minimal project (default: adopt existing .xcodeproj)
+  --structure <type>            Directory structure: mvvm, clean, or none (default: mvvm)
+
+CONFIGURATION OPTIONS:
   --bundle-id-root <root>       Bundle identifier root (default: $BUNDLE_ID_ROOT)
   --deployment-target <version> iOS deployment target (default: $DEPLOYMENT_TARGET)
   --swift-version <version>     Swift version (default: $SWIFT_VERSION)
   --test-framework <framework>  Test framework: swift-testing or xctest (default: $TEST_FRAMEWORK)
   --source-language <code>      Source language (default: $SOURCE_LANGUAGE)
+
+PROJECT OPTIONS:
+  --public                      Make this a public project
+  --private                     Make this a private project (default)
+
+GIT OPTIONS:
   --git-hooks                   Enable git pre-commit hooks (default)
   --no-git-hooks                Disable git pre-commit hooks
   --commit                      Create initial git commit (default)
   --no-commit                   Skip initial git commit
-  --public                      Make this a public project
-  --private                     Make this a private project (default)
+
+OTHER OPTIONS:
   --force                       Overwrite existing files without prompting
   --skip-brew                   Skip Homebrew dependency installation
   --help                        Show this help message
 
 EXAMPLES:
+  # Adopt existing Xcode project (primary workflow)
   $0 --project-name "MyApp"
+
+  # Generate minimal project for quick start
+  $0 --project-name "MyApp" --generate-minimal
+
+  # Generate with clean structure (no MVVM directories)
+  $0 --project-name "MyApp" --generate-minimal --structure clean
+
+  # Public project with custom config
   $0 --project-name "MyApp" --public --deployment-target 17.0
+
+WORKFLOWS:
+  1. Xcode-first (recommended):
+     - Create project in Xcode
+     - Clone template into project directory
+     - Run: ./scripts/setup.sh --project-name YourApp
+
+  2. Template-first (quick start):
+     - Clone template
+     - Run: ./scripts/setup.sh --project-name YourApp --generate-minimal
+     - Open generated .xcodeproj in Xcode
 
 EOF
 }
@@ -115,6 +150,14 @@ parse_arguments() {
         SKIP_BREW=true
         shift
         ;;
+      --generate-minimal)
+        GENERATE_MINIMAL=true
+        shift
+        ;;
+      --structure)
+        STRUCTURE="$2"
+        shift 2
+        ;;
       --help|-h)
         show_help
         exit 0
@@ -126,6 +169,12 @@ parse_arguments() {
         ;;
     esac
   done
+
+  # Validate structure option
+  if [[ "$STRUCTURE" != "mvvm" && "$STRUCTURE" != "clean" && "$STRUCTURE" != "none" ]]; then
+    log_error "Invalid structure: $STRUCTURE. Must be 'mvvm', 'clean', or 'none'"
+    exit 1
+  fi
 }
 
 validate_project_name() {
@@ -227,23 +276,230 @@ replace_placeholders() {
   log_success "Placeholder replacement complete"
 }
 
-rename_directories() {
-  log_info "Renaming project directories..."
+detect_project_mode() {
+  log_info "Detecting project mode..."
 
-  # Rename directories from MyProject to actual project name
-  if [[ -d "MyProject" ]]; then
-    mv "MyProject" "$PROJECT_NAME"
-    log_success "Renamed MyProject → $PROJECT_NAME"
+  # Check if .xcodeproj exists
+  local xcodeproj_path="${PROJECT_NAME}.xcodeproj"
+
+  if [[ -d "$xcodeproj_path" ]]; then
+    if [[ "$GENERATE_MINIMAL" == true ]]; then
+      log_error "Project already exists at $xcodeproj_path"
+      log_error "Cannot use --generate-minimal with existing project"
+      exit 1
+    fi
+    PROJECT_MODE="adopt"
+    log_info "Found existing project: $xcodeproj_path"
+    log_info "Mode: ADOPT"
+  else
+    if [[ "$GENERATE_MINIMAL" == false ]]; then
+      log_error "No existing project found: $xcodeproj_path"
+      echo ""
+      log_info "To create a new project, use one of these options:"
+      echo "  1. Create project in Xcode first, then run setup again"
+      echo "  2. Use --generate-minimal flag to create minimal project"
+      echo ""
+      echo "Example: $0 --project-name $PROJECT_NAME --generate-minimal"
+      exit 1
+    fi
+    PROJECT_MODE="generate"
+    log_info "No existing project found"
+    log_info "Mode: GENERATE"
   fi
 
-  if [[ -d "MyProjectTests" ]]; then
-    mv "MyProjectTests" "${PROJECT_NAME}Tests"
-    log_success "Renamed MyProjectTests → ${PROJECT_NAME}Tests"
+  echo
+}
+
+create_directory_structure() {
+  local base_dir="$1"
+
+  log_info "Creating directory structure: $STRUCTURE"
+
+  case "$STRUCTURE" in
+    mvvm)
+      mkdir -p "$base_dir"/{Models,Views,ViewModels,Services,Extensions,Helpers,Resources}
+      touch "$base_dir"/{Models,ViewModels,Services,Extensions,Helpers}/.gitkeep
+      log_success "Created MVVM directory structure"
+      ;;
+    clean)
+      mkdir -p "$base_dir/Resources"
+      log_success "Created clean directory structure"
+      ;;
+    none)
+      mkdir -p "$base_dir"
+      log_success "Created base directory"
+      ;;
+  esac
+}
+
+generate_minimal_project() {
+  log_info "Generating minimal project..."
+
+  # Create main app directory
+  create_directory_structure "$PROJECT_NAME"
+
+  # Create AppDelegate.swift
+  cat > "$PROJECT_NAME/AppDelegate.swift" <<'EOF'
+import UIKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    return true
+  }
+
+  func application(
+    _ application: UIApplication,
+    configurationForConnecting connectingSceneSession: UISceneSession,
+    options: UIScene.ConnectionOptions
+  ) -> UISceneConfiguration {
+    return UISceneConfiguration(
+      name: "Default Configuration",
+      sessionRole: connectingSceneSession.role
+    )
+  }
+
+  func application(
+    _ application: UIApplication,
+    didDiscardSceneSessions sceneSessions: Set<UISceneSession>
+  ) {
+  }
+}
+EOF
+
+  # Create SceneDelegate.swift
+  cat > "$PROJECT_NAME/SceneDelegate.swift" <<'EOF'
+import UIKit
+
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+  var window: UIWindow?
+
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    guard let windowScene = (scene as? UIWindowScene) else { return }
+
+    let window = UIWindow(windowScene: windowScene)
+    let viewController = ViewController()
+    window.rootViewController = viewController
+    window.makeKeyAndVisible()
+    self.window = window
+  }
+}
+EOF
+
+  # Create ViewController.swift in appropriate location
+  local view_path="$PROJECT_NAME"
+  if [[ "$STRUCTURE" == "mvvm" ]]; then
+    view_path="$PROJECT_NAME/Views"
   fi
 
-  if [[ -d "MyProjectUITests" ]]; then
-    mv "MyProjectUITests" "${PROJECT_NAME}UITests"
-    log_success "Renamed MyProjectUITests → ${PROJECT_NAME}UITests"
+  cat > "$view_path/ViewController.swift" <<EOF
+import UIKit
+
+class ViewController: UIViewController {
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    view.backgroundColor = .systemBackground
+
+    let label = UILabel()
+    label.text = "Hello, $PROJECT_NAME!"
+    label.font = .preferredFont(forTextStyle: .largeTitle)
+    label.textAlignment = .center
+    label.translatesAutoresizingMaskIntoConstraints = false
+
+    view.addSubview(label)
+
+    NSLayoutConstraint.activate([
+      label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+      label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+    ])
+  }
+}
+EOF
+
+  # Create Info.plist
+  cat > "$PROJECT_NAME/Info.plist" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+</dict>
+</plist>
+EOF
+
+  # Create test targets
+  mkdir -p "${PROJECT_NAME}Tests"
+  cat > "${PROJECT_NAME}Tests/${PROJECT_NAME}Tests.swift" <<EOF
+import Testing
+@testable import $PROJECT_NAME
+
+struct ${PROJECT_NAME}Tests {
+  @Test func exampleTest() async throws {
+    #expect(true)
+  }
+}
+EOF
+
+  mkdir -p "${PROJECT_NAME}UITests"
+  cat > "${PROJECT_NAME}UITests/${PROJECT_NAME}UITests.swift" <<EOF
+import XCTest
+
+final class ${PROJECT_NAME}UITests: XCTestCase {
+  override func setUpWithError() throws {
+    continueAfterFailure = false
+  }
+
+  func testExample() throws {
+    let app = XCUIApplication()
+    app.launch()
+    XCTAssertTrue(app.exists)
+  }
+}
+EOF
+
+  log_success "Minimal project generated"
+}
+
+adopt_existing_project() {
+  log_info "Adopting existing Xcode project..."
+
+  # For now, we'll just verify the project exists and configure tooling around it
+  # In the future, we could use xcodegen dump to extract config
+
+  if [[ ! -d "${PROJECT_NAME}.xcodeproj" ]]; then
+    log_error "Project ${PROJECT_NAME}.xcodeproj not found"
+    exit 1
+  fi
+
+  log_success "Existing project verified"
+  log_info "Configuring tooling for existing project structure"
+
+  # Create directory structure if requested
+  if [[ "$STRUCTURE" != "none" ]]; then
+    create_directory_structure "$PROJECT_NAME"
   fi
 }
 
@@ -364,10 +620,18 @@ main() {
 
   parse_arguments "$@"
   validate_project_name
+  detect_project_mode
 
   install_dependencies
   replace_placeholders
-  rename_directories
+
+  # Mode-specific operations
+  if [[ "$PROJECT_MODE" == "generate" ]]; then
+    generate_minimal_project
+  elif [[ "$PROJECT_MODE" == "adopt" ]]; then
+    adopt_existing_project
+  fi
+
   configure_simulators
   generate_xcode_project
   setup_git_hooks

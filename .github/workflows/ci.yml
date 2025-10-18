@@ -25,21 +25,23 @@ jobs:
       - name: Auto-configure if unconfigured
         run: |
           # Detect if this is an unconfigured template
-          if grep -q "{{PROJECT_NAME}}" project.yml 2>/dev/null || [ ! -f project.yml ]; then
-            echo "🔧 Unconfigured template detected - running setup with test configuration"
+          if grep -q "{{PROJECT_NAME}}" project.yml 2>/dev/null; then
+            echo "🔧 Unconfigured template detected - generating minimal test project"
             ./scripts/setup.sh \
               --project-name "CITestApp" \
               --bundle-id-root "com.ci.test" \
               --deployment-target 18.0 \
               --swift-version 6.2 \
               --test-framework "swift-testing" \
+              --structure mvvm \
+              --generate-minimal \
               --no-git-hooks \
               --no-commit \
               --skip-brew \
               --force
-            echo "✅ Template auto-configured for CI"
+            echo "✅ Template auto-configured for CI testing"
           else
-            echo "✅ Project already configured"
+            echo "✅ Project already configured (derived repository)"
           fi
 
       - name: Cache Homebrew packages

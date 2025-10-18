@@ -25,6 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Swift iOS project template** that uses:
 - **XcodeGen**: Project files generated from `project.yml` configuration, not manually managed
 - **In-Place Configuration**: Files contain `{{PLACEHOLDERS}}` that get replaced during setup
+- **Dual Mode Setup**: Adopt existing Xcode projects OR generate minimal projects
 - **Script Automation**: Comprehensive bash script ecosystem for all development tasks
 - **Quality-First**: Built-in SwiftLint, SwiftFormat, and pre-commit hooks
 - **Unified CI**: Same workflow runs on template repo and generated projects
@@ -32,31 +33,49 @@ This is a **Swift iOS project template** that uses:
 ### Core Components
 - **`scripts/` Directory**: Contains all development automation scripts with helper functions in `_helpers.sh`
 - **`project.yml`**: XcodeGen configuration with placeholders like `{{PROJECT_NAME}}`
-- **`MyProject/`**: Placeholder project directory that gets renamed during setup
 - **`simulator.yml`**: Auto-generated simulator configuration for tests
 - **`.github/workflows/ci.yml`**: Unified CI workflow that auto-configures if needed
 - **Brewfile**: Manages all development tool dependencies (yq, jq, xcodegen, swiftlint, etc.)
 
-### Setup Flow
-1. User runs `./scripts/setup.sh --project-name MyApp`
-2. Script does in-place replacement of `{{PLACEHOLDERS}}` in all files
-3. Renames `MyProject/` → `MyApp/`, `MyProjectTests/` → `MyAppTests/`, etc.
+### Setup Modes
+
+**ADOPT Mode (Primary Workflow - Xcode-First)**
+1. Create project in Xcode with your preferred template
+2. Clone template repository into project directory
+3. Run `./scripts/setup.sh --project-name YourApp`
+4. Script detects existing .xcodeproj and configures tooling around it
+5. Optional: Create directory structure with `--structure mvvm`
+
+**GENERATE Mode (Secondary Workflow - Quick Start)**
+1. Clone template repository
+2. Run `./scripts/setup.sh --project-name YourApp --generate-minimal`
+3. Script creates minimal Swift files and directory structure
 4. Runs `xcodegen` to create `.xcodeproj` from configured `project.yml`
 5. Configures simulators and installs pre-commit hooks
 
 ## Project Generation and Management
 
 ### Using This Template
-This repository is a **template repository** with placeholder files. To create a new project:
-1. Use "Use this template" on GitHub or clone and rename
-2. Run `./scripts/setup.sh --project-name YourApp`
-3. Setup script replaces placeholders and renames directories in-place
+
+**Primary Workflow (Xcode-First - Recommended)**
+1. Create new project in Xcode using any template (SwiftUI App, UIKit, etc.)
+2. Clone this template repository into the same directory
+3. Run `./scripts/setup.sh --project-name YourApp`
+4. Script adopts your Xcode project and adds tooling/automation
+5. Optional: Use `--structure mvvm` to create directory structure
+
+**Secondary Workflow (Quick Start)**
+1. Clone this template repository
+2. Run `./scripts/setup.sh --project-name YourApp --generate-minimal`
+3. Script generates minimal project and configures everything
 4. Result: Configured project with `YourApp/`, `YourAppTests/`, `YourAppUITests/`
 
-### After Project Generation
+### After Setup
 - **Always run `xcodegen`** after modifying `project.yml` or adding/removing files
 - Use scripts for all development tasks rather than Xcode's built-in build/test
-- Generated projects follow MVVM architecture with Models/, Views/, ViewModels/, Services/, Extensions/, Helpers/
+- Directory structure is optional: use `--structure mvvm`, `--structure clean`, or `--structure none`
+- In ADOPT mode, script works with your existing Xcode project structure
+- In GENERATE mode, creates minimal UIKit project with configurable structure
 
 ## Configuration Files
 
@@ -133,7 +152,14 @@ All tools installed via Brewfile: yq, jq, xcodegen, swiftlint, swiftformat, xcbe
 ### CI Workflow
 1. Checkout code
 2. Detect if project is configured (check for `{{PROJECT_NAME}}` in project.yml)
-3. If unconfigured: run `./scripts/setup.sh` with test parameters
+3. If unconfigured: run `./scripts/setup.sh --generate-minimal` with test parameters
 4. Install dependencies via Brewfile
-5. Generate Xcode project with xcodegen
+5. Generate Xcode project with xcodegen (or use existing in adopt mode)
 6. Run `./scripts/preflight.sh` (format, lint, build, test)
+
+### Template Testing
+The template repository's CI automatically:
+1. Detects it's unconfigured (sees `{{PLACEHOLDERS}}`)
+2. Runs `setup.sh --generate-minimal` to create test project
+3. Runs full preflight validation
+4. Ensures template works before anyone uses it
