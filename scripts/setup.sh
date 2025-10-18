@@ -12,7 +12,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_helpers.sh"
 
 # Default values
 PROJECT_NAME=""
-DEPLOYMENT_TARGET="18.0"
+DEPLOYMENT_TARGET="26.0"
 SWIFT_VERSION="6.2"
 PROJECT_TYPE="private"
 BUNDLE_ID_ROOT="com.yourcompany"
@@ -417,7 +417,7 @@ class ViewController: UIViewController {
 
     NSLayoutConstraint.activate([
       label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+      label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
     ])
   }
 }
@@ -467,6 +467,7 @@ EOF
   cat > "${PROJECT_NAME}UITests/${PROJECT_NAME}UITests.swift" <<EOF
 import XCTest
 
+@MainActor
 final class ${PROJECT_NAME}UITests: XCTestCase {
   override func setUpWithError() throws {
     continueAfterFailure = false
@@ -527,10 +528,10 @@ configure_simulators() {
     cat > simulator.yml <<EOF
 simulators:
   tests:
-    name: iPhone 16 Pro
+    name: iPhone 17 Pro
     os: latest
   ui-tests:
-    name: iPhone 16 Pro
+    name: iPhone 17 Pro
     os: latest
 EOF
     log_success "Created simulator.yml"

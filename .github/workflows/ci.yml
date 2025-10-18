@@ -25,7 +25,7 @@ jobs:
       - name: Auto-configure if unconfigured
         run: |
           # Detect if this is an unconfigured template
-          if grep -q "{{PROJECT_NAME}}" project.yml 2>/dev/null; then
+          if grep -q "TestApp" project.yml 2>/dev/null; then
             echo "🔧 Unconfigured template detected - generating minimal test project"
             ./scripts/setup.sh \
               --project-name "CITestApp" \
@@ -37,7 +37,6 @@ jobs:
               --generate-minimal \
               --no-git-hooks \
               --no-commit \
-              --skip-brew \
               --force
             echo "✅ Template auto-configured for CI testing"
           else

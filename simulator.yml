@@ -1,0 +1,11 @@
+simulators:
+  tests:
+    name: iPhone 17 Pro
+    os: 26-0
+    device: iPhone 17 Pro
+    arch: arm64
+  ui-tests:
+    name: iPhone 17 Pro
+    os: 26-0
+    device: iPhone 17 Pro
+    arch: arm64
