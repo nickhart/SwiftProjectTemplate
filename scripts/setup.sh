@@ -417,7 +417,7 @@ class ViewController: UIViewController {
 
     NSLayoutConstraint.activate([
       label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+      label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
     ])
   }
 }
@@ -467,6 +467,7 @@ EOF
   cat > "${PROJECT_NAME}UITests/${PROJECT_NAME}UITests.swift" <<EOF
 import XCTest
 
+@MainActor
 final class ${PROJECT_NAME}UITests: XCTestCase {
   override func setUpWithError() throws {
     continueAfterFailure = false

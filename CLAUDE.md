@@ -32,7 +32,7 @@ This is a **Swift iOS project template** that uses:
 
 ### Core Components
 - **`scripts/` Directory**: Contains all development automation scripts with helper functions in `_helpers.sh`
-- **`project.yml`**: XcodeGen configuration with placeholders like `{{PROJECT_NAME}}`
+- **`project.yml`**: XcodeGen configuration with placeholders like `TestApp`
 - **`simulator.yml`**: Auto-generated simulator configuration for tests
 - **`.github/workflows/ci.yml`**: Unified CI workflow that auto-configures if needed
 - **Brewfile**: Manages all development tool dependencies (yq, jq, xcodegen, swiftlint, etc.)
@@ -80,9 +80,9 @@ This is a **Swift iOS project template** that uses:
 ## Configuration Files
 
 ### Critical Files (Pre-configured with Placeholders)
-- **`project.yml`** - XcodeGen project definition with `{{PROJECT_NAME}}` placeholders
+- **`project.yml`** - XcodeGen project definition with `TestApp` placeholders
 - **`simulator.yml`** - Auto-generated during setup with sensible defaults
-- **`.swiftlint.yml`** - SwiftLint rules with `{{PROJECT_NAME}}` in paths
+- **`.swiftlint.yml`** - SwiftLint rules with `TestApp` in paths
 - **`.swiftformat`** - SwiftFormat configuration ready to use
 
 ### Development Dependencies
@@ -151,7 +151,7 @@ All tools installed via Brewfile: yq, jq, xcodegen, swiftlint, swiftformat, xcbe
 
 ### CI Workflow
 1. Checkout code
-2. Detect if project is configured (check for `{{PROJECT_NAME}}` in project.yml)
+2. Detect if project is configured (check for `TestApp` in project.yml)
 3. If unconfigured: run `./scripts/setup.sh --generate-minimal` with test parameters
 4. Install dependencies via Brewfile
 5. Generate Xcode project with xcodegen (or use existing in adopt mode)

@@ -1,9 +1,9 @@
-name: {{PROJECT_NAME}}
+name: TestApp
 options:
-  bundleIdPrefix: {{BUNDLE_ID_ROOT}}
+  bundleIdPrefix: com.yourcompany
   developmentLanguage: en
   deploymentTarget:
-    iOS: "{{DEPLOYMENT_TARGET}}"
+    iOS: "18.0"
   xcodeVersion: "15.0"
   generateEmptyDirectories: true
 
@@ -17,7 +17,7 @@ options:
 settings:
   base:
     # Swift version
-    SWIFT_VERSION: "{{SWIFT_VERSION}}"
+    SWIFT_VERSION: "6.2"
     # Development settings
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_IDENTITY: "Apple Development"
@@ -37,18 +37,18 @@ settings:
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 
 targets:
-  {{PROJECT_NAME}}:
+  TestApp:
     type: application
     platform: iOS
-    deploymentTarget: "{{DEPLOYMENT_TARGET}}"
+    deploymentTarget: "18.0"
     sources:
-      - {{PROJECT_NAME}}
+      - TestApp
     resources:
-      - {{PROJECT_NAME}}/Resources
+      - TestApp/Resources
     info:
-      path: {{PROJECT_NAME}}/Info.plist
+      path: TestApp/Info.plist
       properties:
-        CFBundleDisplayName: {{PROJECT_NAME}}
+        CFBundleDisplayName: TestApp
         CFBundleVersion: "1"
         CFBundleShortVersionString: "1.0"
         UILaunchStoryboardName: LaunchScreen
@@ -71,41 +71,41 @@ targets:
               - UISceneConfigurationName: Default Configuration
                 UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
 
-  {{PROJECT_NAME}}Tests:
+  TestAppTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "{{DEPLOYMENT_TARGET}}"
+    deploymentTarget: "18.0"
     sources:
-      - {{PROJECT_NAME}}Tests
+      - TestAppTests
     dependencies:
-      - target: {{PROJECT_NAME}}
+      - target: TestApp
 
-  {{PROJECT_NAME}}UITests:
+  TestAppUITests:
     type: bundle.ui-testing
     platform: iOS
-    deploymentTarget: "{{DEPLOYMENT_TARGET}}"
+    deploymentTarget: "18.0"
     sources:
-      - {{PROJECT_NAME}}UITests
+      - TestAppUITests
     dependencies:
-      - target: {{PROJECT_NAME}}
+      - target: TestApp
 
 schemes:
-  {{PROJECT_NAME}}:
+  TestApp:
     build:
       targets:
-        {{PROJECT_NAME}}: all
-        {{PROJECT_NAME}}Tests: [test]
-        {{PROJECT_NAME}}UITests: [test]
+        TestApp: all
+        TestAppTests: [test]
+        TestAppUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       gatherCoverageData: true
       coverageTargets:
-        - {{PROJECT_NAME}}
+        - TestApp
       targets:
-        - {{PROJECT_NAME}}Tests
-        - {{PROJECT_NAME}}UITests
+        - TestAppTests
+        - TestAppUITests
     profile:
       config: Release
     analyze:
