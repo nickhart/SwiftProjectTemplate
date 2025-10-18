@@ -1,0 +1,95 @@
+name: iOS CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  ci:
+    name: Build, Test & Quality Checks
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.4"
+
+      - name: Auto-configure if unconfigured
+        run: |
+          # Detect if this is an unconfigured template
+          if grep -q "{{PROJECT_NAME}}" project.yml 2>/dev/null || [ ! -f project.yml ]; then
+            echo "🔧 Unconfigured template detected - running setup with test configuration"
+            ./scripts/setup.sh \
+              --project-name "CITestApp" \
+              --bundle-id-root "com.ci.test" \
+              --deployment-target 18.0 \
+              --swift-version 6.2 \
+              --test-framework "swift-testing" \
+              --no-git-hooks \
+              --no-commit \
+              --skip-brew \
+              --force
+            echo "✅ Template auto-configured for CI"
+          else
+            echo "✅ Project already configured"
+          fi
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew
+          key: ${{ runner.os }}-homebrew-${{ hashFiles('**/Brewfile') }}
+          restore-keys: |
+            ${{ runner.os }}-homebrew-
+
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing Homebrew dependencies..."
+          brew bundle install --file=./Brewfile
+
+          echo "✅ Installed versions:"
+          swiftlint --version
+          swiftformat --version
+          xcodegen --version
+          yq --version
+
+      - name: Generate Xcode project
+        run: |
+          echo "🏗️  Generating Xcode project from project.yml..."
+          xcodegen generate
+
+          PROJECT_NAME=$(yq eval '.name' project.yml)
+          if [ -d "${PROJECT_NAME}.xcodeproj" ]; then
+            echo "✅ Xcode project generated: ${PROJECT_NAME}.xcodeproj"
+          else
+            echo "❌ Failed to generate Xcode project"
+            exit 1
+          fi
+
+      - name: Run preflight checks
+        run: |
+          echo "🚀 Running preflight checks (format, lint, build, test)..."
+          ./scripts/preflight.sh
+
+      - name: CI Summary
+        if: success()
+        run: |
+          echo ""
+          echo "🎉 CI Complete!"
+          echo ""
+          echo "✅ Code formatting validated"
+          echo "✅ Code quality checks passed"
+          echo "✅ Build completed successfully"
+          echo "✅ Tests executed"
+          echo ""
+          echo "Ready for review! 🚀"
