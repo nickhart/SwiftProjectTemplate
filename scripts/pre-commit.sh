@@ -4,11 +4,16 @@ set -euo pipefail
 # Pre-commit hook for SwiftProjectTemplate projects
 # Runs formatting, linting, and basic validation before allowing commits
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Find the repository root (works from both scripts/ and .git/hooks/)
+if [[ -d ".git" ]]; then
+  ROOT_DIR="$(pwd)"
+else
+  ROOT_DIR="$(git rev-parse --show-toplevel)"
+fi
 cd "$ROOT_DIR"
 
-# Source helper functions
-source "$(dirname "${BASH_SOURCE[0]}")/_helpers.sh"
+# Source helper functions from scripts directory
+source "$ROOT_DIR/scripts/_helpers.sh"
 
 # Configuration
 AUTO_FIX=true
