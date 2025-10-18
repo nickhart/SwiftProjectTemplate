@@ -102,9 +102,3 @@ iOSInjectionProject/
 *.pyo
 *.rej
 *.swp
-
-# CI Test Projects (prevent accidental commits)
-/ci-test-*/
-/ci-test-project/
-/CITest*/
-/TestApp*/
