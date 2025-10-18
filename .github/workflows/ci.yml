@@ -37,7 +37,6 @@ jobs:
               --generate-minimal \
               --no-git-hooks \
               --no-commit \
-              --skip-brew \
               --force
             echo "✅ Template auto-configured for CI testing"
           else
